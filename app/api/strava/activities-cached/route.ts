@@ -101,16 +101,16 @@ export async function GET(request: NextRequest) {
 
     const userProfile = profile[0];
 
-    // Fetch running activities from cache (last 30 days for performance)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Fetch running activities from cache (last 12 months for proper monthly analysis)
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
 
     const runningActivities = await supabaseRequest("GET", "activities", null, {
       user_id: `eq.${userId}`,
       type: `in.("Run")`,
-      start_date_local: `gte.${thirtyDaysAgo.toISOString()}`,
+      start_date_local: `gte.${twelveMonthsAgo.toISOString()}`,
       order: "start_date_local.desc",
-      limit: "100"
+      limit: "500"
     });
 
     if (!runningActivities || runningActivities.length === 0) {
@@ -130,26 +130,62 @@ export async function GET(request: NextRequest) {
         isCachedData: true,
         connected: true,
         lastSync: userProfile.last_sync_at,
-        message: "No running activities found in the last 30 days",
+        message: "No running activities found in the last 12 months",
       });
     }
 
-    // Process data for charts (last 6 runs)
-    const performanceData = runningActivities
-      .slice(0, 6)
-      .reverse()
-      .map((activity: any) => {
-        const date = new Date(activity.start_date_local);
-        const monthName = date.toLocaleDateString("en", { month: "short" });
-
-        return {
-          month: monthName,
-          pace: convertToKmPace(activity.average_speed),
-          distance: formatDistance(activity.distance),
-          calories: activity.calories || Math.round((activity.distance / 1000) * 65),
-          heartrate: activity.average_heartrate || 0,
-        };
+    // Process data for monthly performance charts (last 12 months)
+    const monthlyData = new Map();
+    const currentDate = new Date();
+    
+    // Initialize last 12 months
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = monthDate.toLocaleDateString("en", { month: "short" });
+      
+      monthlyData.set(monthKey, {
+        month: monthName,
+        year: monthDate.getFullYear(),
+        totalDistance: 0,
+        totalTime: 0,
+        totalCalories: 0,
+        totalHeartrate: 0,
+        runCount: 0,
+        totalPaceSum: 0
       });
+    }
+
+    // Aggregate activities by month
+    runningActivities.forEach((activity: any) => {
+      const date = new Date(activity.start_date_local);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (monthlyData.has(monthKey)) {
+        const monthStats = monthlyData.get(monthKey);
+        const pace = convertToKmPace(activity.average_speed);
+        const calories = activity.calories || Math.round((activity.distance / 1000) * 65);
+        
+        monthStats.totalDistance += activity.distance / 1000; // Convert to km
+        monthStats.totalTime += activity.moving_time / 60; // Convert to minutes
+        monthStats.totalCalories += calories;
+        monthStats.totalHeartrate += activity.average_heartrate || 0;
+        monthStats.runCount += 1;
+        monthStats.totalPaceSum += pace;
+      }
+    });
+
+    // Calculate averages and format performance data
+    const performanceData = Array.from(monthlyData.values())
+      .filter(monthStats => monthStats.runCount > 0) // Only include months with runs
+      .map(monthStats => ({
+        month: monthStats.month,
+        pace: Math.round((monthStats.totalPaceSum / monthStats.runCount) * 10) / 10,
+        distance: Math.round(monthStats.totalDistance * 10) / 10,
+        calories: Math.round(monthStats.totalCalories / monthStats.runCount),
+        heartrate: Math.round(monthStats.totalHeartrate / monthStats.runCount),
+        runs: monthStats.runCount
+      }));
 
     // Weekly distance data (last 8 weeks)
     const weeklyData = [];
@@ -158,13 +194,20 @@ export async function GET(request: NextRequest) {
     for (let i = 7; i >= 0; i--) {
       const weekStart = new Date(now);
       weekStart.setDate(weekStart.getDate() - i * 7);
+      // Start week on Monday
+      const dayOfWeek = weekStart.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      weekStart.setDate(weekStart.getDate() - daysToMonday);
+      weekStart.setHours(0, 0, 0, 0);
+      
       const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 7);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
 
       // Filter activities for this week
       const weekActivities = runningActivities.filter((activity: any) => {
         const activityDate = new Date(activity.start_date_local);
-        return activityDate >= weekStart && activityDate < weekEnd;
+        return activityDate >= weekStart && activityDate <= weekEnd;
       });
 
       const weekDistance = weekActivities.reduce(
@@ -172,16 +215,23 @@ export async function GET(request: NextRequest) {
         0
       );
 
+      // Format week label with actual dates
+      const weekLabel = `${weekStart.getDate()}/${weekStart.getMonth() + 1}`;
+      const fullWeekLabel = `${weekStart.toLocaleDateString("en", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("en", { month: "short", day: "numeric" })}`;
+
       weeklyData.push({
-        week: `W${8 - i}`,
+        week: weekLabel,
+        fullWeek: fullWeekLabel,
         distance: Math.round(weekDistance * 10) / 10,
         runs: weekActivities.length,
+        weekStart: weekStart.toISOString().split('T')[0],
+        weekEnd: weekEnd.toISOString().split('T')[0],
       });
     }
 
-    // Recent activities for dashboard (last 5)
+    // Recent activities for dashboard (last 10)
     const recentActivities = runningActivities
-      .slice(0, 5)
+      .slice(0, 10)
       .map((activity: any) => {
         const activityDate = new Date(activity.start_date_local);
         return {

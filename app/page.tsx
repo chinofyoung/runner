@@ -23,6 +23,8 @@ import {
   X,
   Send,
   Bot,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import {
   BarChart,
@@ -32,6 +34,7 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  Tooltip,
 } from "recharts";
 import AIChat from "./components/AIChat";
 import TrainingPlan from "./components/TrainingPlan";
@@ -43,33 +46,45 @@ const generateTrackingData = (stravaData: StravaData | null) => {
   if (!stravaData?.recentActivities || stravaData.recentActivities.length === 0) {
     // Fallback to demo data if no real data available
     return [
-      { time: "6:00", speed: 18 },
-      { time: "6:20", speed: 15 },
-      { time: "6:40", speed: 25 },
-      { time: "7:00", speed: 28 },
-      { time: "7:20", speed: 22 },
-      { time: "7:40", speed: 18 },
-      { time: "8:00", speed: 12 },
+      { activityName: "Morning Run", speed: 18, pace: 3.3, distance: 5.2, date: "Dec 15" },
+      { activityName: "Evening Jog", speed: 15, pace: 4.0, distance: 6.1, date: "Dec 17" },
+      { activityName: "Speed Work", speed: 25, pace: 2.4, distance: 4.8, date: "Dec 19" },
+      { activityName: "Long Run", speed: 28, pace: 2.1, distance: 7.3, date: "Dec 21" },
+      { activityName: "Recovery Run", speed: 22, pace: 2.7, distance: 5.9, date: "Dec 23" },
+      { activityName: "Hill Training", speed: 18, pace: 3.3, distance: 6.5, date: "Dec 25" },
+      { activityName: "Easy Run", speed: 12, pace: 5.0, distance: 4.2, date: "Dec 27" },
+      { activityName: "Tempo Run", speed: 20, pace: 3.0, distance: 8.1, date: "Dec 29" },
+      { activityName: "Interval Run", speed: 24, pace: 2.5, distance: 6.8, date: "Dec 31" },
+      { activityName: "Weekend Long", speed: 26, pace: 2.3, distance: 7.5, date: "Jan 2" },
     ];
   }
 
-  // Use last 7 runs to show pace progression
-  const recentRuns = stravaData.recentActivities.slice(0, 7).reverse();
+  // Use last 10 runs to show pace progression
+  const recentRuns = stravaData.recentActivities.slice(0, 10).reverse();
   
   return recentRuns.map((run, index) => {
     // Convert pace (min/km) to speed (km/h)
     const speed = 60 / run.pace;
     
-    // Create time labels based on run order
-    const baseTime = new Date();
-    baseTime.setHours(6, 0, 0, 0);
-    baseTime.setMinutes(baseTime.getMinutes() + (index * 20));
+    // Format date for display
+    const runDate = new Date(run.rawDate || run.date);
+    const dateLabel = runDate.toLocaleDateString('en', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    
+    // Truncate activity name for x-axis display
+    const displayName = run.name.length > 15 ? run.name.substring(0, 15) + '...' : run.name;
     
     return {
-      time: baseTime.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }),
+      activityName: displayName,
       speed: Math.round(speed * 10) / 10, // Round to 1 decimal
-      runName: run.name.length > 15 ? run.name.substring(0, 15) + '...' : run.name,
-      pace: run.pace
+      pace: run.pace,
+      distance: run.distance,
+      date: dateLabel,
+      fullName: run.name,
+      heartrate: run.heartrate || null,
+      elevation: run.elevation || null
     };
   });
 };
@@ -81,11 +96,15 @@ interface StravaData {
     distance: number;
     calories: number;
     heartrate: number;
+    runs: number;
   }>;
   weeklyData: Array<{
     week: string;
+    fullWeek: string;
     distance: number;
     runs: number;
+    weekStart: string;
+    weekEnd: string;
   }>;
   recentActivities: Array<{
     id: number;
@@ -121,6 +140,14 @@ export default function Home() {
   const [stravaConnected, setStravaConnected] = useState(false);
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [syncMessage, setSyncMessage] = useState("");
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncResult, setSyncResult] = useState<{
+    success: boolean;
+    message: string;
+    activitiesSynced?: number;
+  } | null>(null);
   const [showAIPopup, setShowAIPopup] = useState(false);
   
   // Mini chat state
@@ -162,22 +189,97 @@ export default function Home() {
 
   const syncStravaData = async () => {
     setSyncing(true);
+    setSyncProgress(0);
+    setSyncMessage("Starting sync...");
+    
     try {
+      console.log("Starting Strava sync...");
+      
+      // Simulate progress stages
+      setSyncProgress(10);
+      setSyncMessage("Connecting to Strava...");
+      
       const response = await fetch("/api/strava/sync", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
       
-      const result = await response.json();
+      setSyncProgress(30);
+      setSyncMessage("Fetching activities...");
       
-      if (response.ok) {
-        // Refresh data after successful sync
-        await fetchStravaData();
-        await fetchSyncStatus();
-      } else {
-        console.error("Sync failed:", result.message);
+      console.log("Sync response status:", response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Sync API error:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText
+        });
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          console.error("Sync failed:", errorData.message || errorData.error);
+          setSyncResult({
+            success: false,
+            message: errorData.message || errorData.error || 'Unknown error'
+          });
+        } catch {
+          console.error("Failed to parse error response");
+          setSyncResult({
+            success: false,
+            message: `${response.status} ${response.statusText}`
+          });
+        }
+        setShowSyncModal(true);
+        return;
       }
+      
+      setSyncProgress(60);
+      setSyncMessage("Processing activities...");
+      
+      const result = await response.json();
+      console.log("Sync successful:", result);
+      
+      setSyncProgress(80);
+      setSyncMessage("Updating cache...");
+      
+      // Refresh data after successful sync
+      await fetchStravaData();
+      await fetchSyncStatus();
+      
+      setSyncProgress(100);
+      setSyncMessage("Sync completed!");
+      
+      // Small delay to show completion
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setSyncResult({
+        success: true,
+        message: result.message || 'Activities synced successfully',
+        activitiesSynced: result.activitiesSynced
+      });
+      setShowSyncModal(true);
+      
     } catch (error) {
-      console.error("Failed to sync:", error);
+      console.error("Sync request failed:", error);
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error("Network error - API might be down or CORS issue");
+        setSyncResult({
+          success: false,
+          message: "Network error: Unable to connect to sync API. Please check your connection and try again."
+        });
+      } else {
+        console.error("Unexpected sync error:", error);
+        setSyncResult({
+          success: false,
+          message: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+      setShowSyncModal(true);
     } finally {
       setSyncing(false);
     }
@@ -525,17 +627,17 @@ export default function Home() {
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h2 className="text-xl font-semibold text-gray-800">
-                        Pace History
+                        Last 10 Runs - Pace History
                       </h2>
                       <p className="text-gray-500">
                         {stravaData?.summary.avgPace 
-                          ? `Your average pace is ${stravaData.summary.avgPace}'/km` 
-                          : "Your running pace progression"}
+                          ? `Your average pace is ${stravaData.summary.avgPace}'/km across ${stravaData.summary.totalRuns} runs` 
+                          : "Your recent running pace progression and speed analysis"}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2 text-gray-500">
-                      <span>Recent Runs</span>
-                      <Calendar className="w-5 h-5" />
+                      <span>Speed (km/h)</span>
+                      <Activity className="w-5 h-5" />
                     </div>
                   </div>
 
@@ -543,12 +645,47 @@ export default function Home() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={generateTrackingData(stravaData)}>
                         <XAxis
-                          dataKey="time"
+                          dataKey="activityName"
                           axisLine={false}
                           tickLine={false}
-                          tick={{ fontSize: 12 }}
+                          tick={{ fontSize: 10, fill: '#6B7280' }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
                         />
                         <YAxis hide />
+                        <Tooltip
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length > 0) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                                  <p className="font-semibold text-gray-800 mb-2">{data.fullName || data.activityName}</p>
+                                  <div className="space-y-1 text-sm">
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">Date:</span> {data.date}
+                                    </p>
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">Speed:</span> {data.speed} km/h
+                                    </p>
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">Pace:</span> {data.pace}'/km
+                                    </p>
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">Distance:</span> {data.distance} km
+                                    </p>
+                                    {data.heartrate && (
+                                      <p className="text-gray-600">
+                                        <span className="font-medium">Avg HR:</span> {data.heartrate} bpm
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
                         <Bar
                           dataKey="speed"
                           fill="#10B981"
@@ -772,51 +909,147 @@ export default function Home() {
               <div className="lg:col-span-2 space-y-6">
                 {/* Performance Chart */}
                 <div className="bg-white rounded-xl shadow-sm p-6">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-6">
-                    Pace Improvement
-                  </h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-800">
+                        Monthly Pace Progress
+                      </h2>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {stravaData?.performanceData && stravaData.performanceData.length > 0
+                          ? `Average pace trend over the last ${stravaData.performanceData.length} months`
+                          : "Your pace improvement over time"}
+                      </p>
+                    </div>
+                    {stravaData?.isCachedData && (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                        Cached Data
+                      </span>
+                    )}
+                  </div>
                   {loading ? (
                     <div className="h-64 flex items-center justify-center">
                       <div className="text-gray-500">
                         Loading performance data...
                       </div>
                     </div>
-                  ) : (
+                  ) : stravaData?.performanceData && stravaData.performanceData.length > 0 ? (
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={stravaData?.performanceData || []}>
-                          <XAxis dataKey="month" />
-                          <YAxis />
+                        <LineChart data={stravaData.performanceData}>
+                          <XAxis 
+                            dataKey="month" 
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 12, fill: '#374151' }}
+                          />
+                          <YAxis 
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 12, fill: '#374151' }}
+                            label={{ value: 'Pace (min/km)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#374151' } }}
+                          />
+                          <Tooltip
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length > 0) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
+                                    <p className="font-semibold text-gray-900 mb-2">{label}</p>
+                                    <div className="space-y-1 text-sm text-gray-800">
+                                      <p><span className="font-medium text-gray-900">Average Pace:</span> {data.pace}'/km</p>
+                                      <p><span className="font-medium text-gray-900">Total Runs:</span> {data.runs}</p>
+                                      <p><span className="font-medium text-gray-900">Total Distance:</span> {data.distance}km</p>
+                                      <p><span className="font-medium text-gray-900">Avg Heart Rate:</span> {data.heartrate} bpm</p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
                           <Line
                             type="monotone"
                             dataKey="pace"
                             stroke="#10B981"
                             strokeWidth={3}
-                            dot={{ fill: "#10B981", r: 4 }}
+                            dot={{ fill: "#10B981", r: 5, strokeWidth: 2, stroke: "#fff" }}
+                            activeDot={{ r: 7, fill: "#10B981" }}
                           />
                         </LineChart>
                       </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-64 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-gray-400 mb-2">📈</div>
+                        <div className="text-gray-500 font-medium mb-1">No pace data available</div>
+                        <div className="text-gray-400 text-sm">
+                          {stravaConnected 
+                            ? "Start running to see your pace progress!" 
+                            : "Connect Strava to see your pace improvement over time"}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {/* Weekly Distance Chart */}
                 <div className="bg-white rounded-xl shadow-sm p-6">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-6">
-                    Weekly Distance
-                  </h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-800">
+                        Weekly Distance
+                      </h2>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Total distance per week (Monday to Sunday)
+                      </p>
+                    </div>
+                    {stravaData?.isCachedData && (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                        Cached Data
+                      </span>
+                    )}
+                  </div>
                   {loading ? (
                     <div className="h-64 flex items-center justify-center">
                       <div className="text-gray-500">
                         Loading weekly data...
                       </div>
                     </div>
-                  ) : (
+                  ) : stravaData?.weeklyData && stravaData.weeklyData.length > 0 ? (
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={stravaData?.weeklyData || []}>
-                          <XAxis dataKey="week" />
-                          <YAxis />
+                        <BarChart data={stravaData.weeklyData}>
+                          <XAxis 
+                            dataKey="week" 
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 12, fill: '#374151' }}
+                          />
+                          <YAxis 
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 12, fill: '#374151' }}
+                            label={{ value: 'Distance (km)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#374151' } }}
+                          />
+                          <Tooltip
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length > 0) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
+                                    <p className="font-semibold text-gray-900 mb-2">{data.fullWeek}</p>
+                                    <div className="space-y-1 text-sm text-gray-800">
+                                      <p><span className="font-medium text-gray-900">Total Distance:</span> {data.distance}km</p>
+                                      <p><span className="font-medium text-gray-900">Number of Runs:</span> {data.runs}</p>
+                                      <p><span className="font-medium text-gray-900">Average per Run:</span> {data.runs > 0 ? Math.round((data.distance / data.runs) * 10) / 10 : 0}km</p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
                           <Bar
                             dataKey="distance"
                             fill="#10B981"
@@ -824,6 +1057,18 @@ export default function Home() {
                           />
                         </BarChart>
                       </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-64 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-gray-400 mb-2">📊</div>
+                        <div className="text-gray-500 font-medium mb-1">No weekly data available</div>
+                        <div className="text-gray-400 text-sm">
+                          {stravaConnected 
+                            ? "Start running to see your weekly progress!" 
+                            : "Connect Strava to see your weekly distance trends"}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -897,8 +1142,8 @@ export default function Home() {
 
         {activeTab === "settings" && (
           <div>
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
                 Settings
               </h1>
               <p className="text-gray-600">
@@ -906,195 +1151,321 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="max-w-2xl">
-              {/* Strava Connection */}
-              <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">S</span>
+            {/* Grid Layout for Better Space Usage */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Left Column: Account Connections */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Strava Connection */}
+                <div className="bg-white rounded-xl shadow-sm p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white font-bold">S</span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          Strava Integration
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Sync real running activities
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        Strava
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Connect to sync your real running activities
-                      </p>
+                    <div className="flex items-center space-x-3">
+                      {stravaConnected ? (
+                        <>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span className="text-sm text-green-600 font-medium">
+                              Connected
+                            </span>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await fetch("/api/strava/status", {
+                                  method: "DELETE",
+                                });
+                                setStravaConnected(false);
+                                // Refresh data
+                                window.location.reload();
+                              } catch (error) {
+                                console.error("Failed to disconnect:", error);
+                              }
+                            }}
+                            className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                          >
+                            Disconnect
+                          </button>
+                        </>
+                      ) : (
+                        <a
+                          href="/api/strava/auth"
+                          className="px-3 py-1.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center space-x-2 text-sm"
+                        >
+                          <span>Connect to Strava</span>
+                        </a>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    {stravaConnected ? (
-                      <>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          <span className="text-sm text-green-600 font-medium">
-                            Connected
+                  
+                  {stravaConnected && (
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <p className="text-sm text-green-800">
+                        ✅ Connected! Real activity data is being used in your charts.
+                      </p>
+                    </div>
+                  )}
+                  {!stravaConnected && (
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-600">
+                        Connect to automatically sync activities and get performance insights.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sync Activities - Compact Layout */}
+                {stravaConnected && (
+                  <div className="bg-white rounded-xl shadow-sm p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          Activity Sync
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Cache activities for faster loading
+                        </p>
+                      </div>
+                      <button
+                        onClick={syncStravaData}
+                        disabled={syncing}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                          syncing
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-blue-500 text-white hover:bg-blue-600"
+                        }`}
+                      >
+                        {syncing ? "Syncing..." : "Sync Now"}
+                      </button>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    {syncing && (
+                      <div className="mb-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-gray-600">{syncMessage}</span>
+                          <span className="text-sm text-gray-500">{syncProgress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${syncProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Compact Sync Status */}
+                    {syncStatus && (
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Last Sync</span>
+                            <span className="text-gray-800 text-xs">
+                              {syncStatus.lastSync 
+                                ? new Date(syncStatus.lastSync.started_at).toLocaleDateString("en", {
+                                    month: "short",
+                                    day: "numeric"
+                                  })
+                                : "Never"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Cached</span>
+                            <span className="text-gray-800 font-medium text-xs">
+                              {syncStatus.totalActivities || 0} activities
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {syncStatus.lastSync && (
+                          <div className="flex items-center justify-end">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              syncStatus.lastSync.status === 'completed' 
+                                ? "bg-green-100 text-green-800"
+                                : syncStatus.lastSync.status === 'failed'
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}>
+                              {syncStatus.lastSync.status}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {!syncStatus?.hasData && stravaConnected && (
+                      <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          💡 First sync recommended for better performance
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* App Preferences */}
+                <div className="bg-white rounded-xl shadow-sm p-5">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    App Preferences
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Units</span>
+                        <select className="text-sm border border-gray-300 rounded px-2 py-1 bg-white">
+                          <option>Metric (km)</option>
+                          <option>Imperial (mi)</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Time Format</span>
+                        <select className="text-sm border border-gray-300 rounded px-2 py-1 bg-white">
+                          <option>24 Hour</option>
+                          <option>12 Hour</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Privacy</span>
+                        <select className="text-sm border border-gray-300 rounded px-2 py-1 bg-white">
+                          <option>Public</option>
+                          <option>Private</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Notifications</span>
+                        <input type="checkbox" className="rounded w-4 h-4 text-green-500 focus:ring-green-500" defaultChecked />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Status & Info */}
+              <div className="space-y-6">
+                {/* Data Overview - Compact Cards */}
+                <div className="bg-white rounded-xl shadow-sm p-5">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    Data Overview
+                  </h3>
+                  <div className="space-y-4">
+                    {/* Data Source Card */}
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-600">Source</span>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            syncStatus?.hasData
+                              ? "bg-green-100 text-green-800"
+                              : stravaConnected
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {syncStatus?.hasData 
+                            ? "Cached" 
+                            : stravaConnected 
+                            ? "Live" 
+                            : "Demo"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {syncStatus?.hasData 
+                          ? "Fast cached data" 
+                          : stravaConnected 
+                          ? "Direct from Strava" 
+                          : "Sample data"}
+                      </p>
+                    </div>
+
+                    {/* Quick Stats */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-blue-50 rounded-lg text-center">
+                        <div className="text-lg font-bold text-blue-600">
+                          {stravaData?.summary.totalRuns || 0}
+                        </div>
+                        <div className="text-xs text-blue-600">Runs</div>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded-lg text-center">
+                        <div className="text-lg font-bold text-green-600">
+                          {Math.round(stravaData?.summary.totalDistance || 0)}
+                        </div>
+                        <div className="text-xs text-green-600">KM</div>
+                      </div>
+                    </div>
+
+                    {stravaData?.isCachedData && (
+                      <div className="p-3 bg-purple-50 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-purple-700">Range</span>
+                          <span className="text-xs text-purple-600 font-medium">
+                            {stravaData.dataRange || "All time"}
                           </span>
                         </div>
-                        <button
-                          onClick={async () => {
-                            try {
-                              await fetch("/api/strava/status", {
-                                method: "DELETE",
-                              });
-                              setStravaConnected(false);
-                              // Refresh data
-                              window.location.reload();
-                            } catch (error) {
-                              console.error("Failed to disconnect:", error);
-                            }
-                          }}
-                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          Disconnect
-                        </button>
-                      </>
-                    ) : (
-                      <a
-                        href="/api/strava/auth"
-                        className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center space-x-2"
-                      >
-                        <span>Connect to Strava</span>
-                      </a>
+                      </div>
                     )}
                   </div>
                 </div>
-                {stravaConnected && (
-                  <div className="mt-4 p-4 bg-green-50 rounded-lg">
-                    <p className="text-sm text-green-800">
-                      ✅ Your Strava account is connected! Real activity data is
-                      being used in your progress charts and metrics.
-                    </p>
-                  </div>
-                )}
-                {!stravaConnected && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600">
-                      Connect your Strava account to automatically sync your
-                      running activities and get real performance insights.
-                    </p>
-                  </div>
-                )}
-              </div>
 
-              {/* Sync Activities */}
-              {stravaConnected && (
-                <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        Sync Activities
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Sync all your Strava activities to enable faster loading and AI recommendations
-                      </p>
+                {/* Account Info */}
+                <div className="bg-white rounded-xl shadow-sm p-5">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    Account
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                        <User className="w-5 h-5 text-gray-500" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-800">Demo User</div>
+                        <div className="text-xs text-gray-500">runner@example.com</div>
+                      </div>
                     </div>
-                    <button
-                      onClick={syncStravaData}
-                      disabled={syncing}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                        syncing
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-blue-500 text-white hover:bg-blue-600"
-                      }`}
-                    >
-                      {syncing ? "Syncing..." : "Sync Now"}
+                    <hr className="border-gray-200" />
+                    <div className="space-y-2 text-xs text-gray-600">
+                      <div className="flex justify-between">
+                        <span>Member since</span>
+                        <span>Dec 2024</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Plan</span>
+                        <span className="text-green-600 font-medium">Free</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="bg-white rounded-xl shadow-sm p-5">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    Quick Actions
+                  </h3>
+                  <div className="space-y-2">
+                    <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                      Export Data
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                      Clear Cache
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      Reset Settings
                     </button>
                   </div>
-                  
-                  {syncStatus && (
-                    <div className="space-y-3 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Last Sync</span>
-                        <span className="text-gray-800">
-                          {syncStatus.lastSync 
-                            ? new Date(syncStatus.lastSync.started_at).toLocaleDateString("en", {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit"
-                              })
-                            : "Never"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Activities in Cache</span>
-                        <span className="text-gray-800 font-medium">
-                          {syncStatus.totalActivities || 0}
-                        </span>
-                      </div>
-                      {syncStatus.lastSync && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-600">Sync Status</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            syncStatus.lastSync.status === 'completed' 
-                              ? "bg-green-100 text-green-800"
-                              : syncStatus.lastSync.status === 'failed'
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}>
-                            {syncStatus.lastSync.status}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {!syncStatus?.hasData && stravaConnected && (
-                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-blue-800">
-                        💡 First time setup: Click "Sync Now" to cache all your Strava activities for faster loading and better AI recommendations.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Data Status */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  Data Status
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Data Source</span>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        syncStatus?.hasData
-                          ? "bg-green-100 text-green-800"
-                          : stravaConnected
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {syncStatus?.hasData 
-                        ? "Cached Strava Data" 
-                        : stravaConnected 
-                        ? "Live Strava Data" 
-                        : "Demo Data"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Activities Shown</span>
-                    <span className="text-gray-800 font-medium">
-                      {stravaData?.summary.totalRuns || 0} runs
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Total Distance</span>
-                    <span className="text-gray-800 font-medium">
-                      {stravaData?.summary.totalDistance || 0} km
-                    </span>
-                  </div>
-                  {stravaData?.isCachedData && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Data Range</span>
-                      <span className="text-gray-800 font-medium">
-                        {stravaData.dataRange || "All time"}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -1222,6 +1593,60 @@ export default function Home() {
         </div>
       )}
 
+      {/* Sync Result Modal */}
+      {showSyncModal && syncResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-center mb-4">
+              {syncResult.success ? (
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                </div>
+              ) : (
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-8 h-8 text-red-500" />
+                </div>
+              )}
+            </div>
+            
+            <div className="text-center">
+              <h3 className={`text-xl font-semibold mb-2 ${
+                syncResult.success ? "text-gray-800" : "text-red-600"
+              }`}>
+                {syncResult.success ? "Sync Successful!" : "Sync Failed"}
+              </h3>
+              
+              <p className="text-gray-600 mb-4">
+                {syncResult.message}
+              </p>
+              
+              {syncResult.success && syncResult.activitiesSynced && (
+                <div className="bg-green-50 rounded-lg p-3 mb-4">
+                  <p className="text-green-800 text-sm">
+                    <span className="font-medium">{syncResult.activitiesSynced}</span> activities synced successfully
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  setShowSyncModal(false);
+                  setSyncResult(null);
+                }}
+                className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                  syncResult.success
+                    ? "bg-green-500 text-white hover:bg-green-600"
+                    : "bg-gray-500 text-white hover:bg-gray-600"
+                }`}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

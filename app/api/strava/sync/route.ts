@@ -71,6 +71,44 @@ const supabaseRequest = async (
   return JSON.parse(responseText);
 };
 
+// Supabase upsert helper for handling conflicts
+const supabaseUpsert = async (
+  table: string,
+  data: any,
+  conflictColumn: string
+) => {
+  const url = `${SUPABASE_URL}/rest/v1/${table}`;
+
+  const headers: Record<string, string> = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+    "Prefer": "resolution=merge-duplicates",
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Supabase Upsert Error:", {
+      status: response.status,
+      statusText: response.statusText,
+      url,
+      errorResponse: errorText,
+    });
+    throw new Error(
+      `Supabase upsert error: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  const responseText = await response.text();
+  return responseText ? JSON.parse(responseText) : [];
+};
+
 // Fetch all activities from Strava with pagination
 async function fetchAllStravaActivities(accessToken: string, per_page = 200) {
   let allActivities: any[] = [];
@@ -124,46 +162,46 @@ async function fetchAllStravaActivities(accessToken: string, per_page = 200) {
 // Transform Strava activity to database format
 function transformActivity(activity: any, userId: string) {
   return {
-    id: activity.id,
+    id: activity.id || null,
     user_id: userId,
-    name: activity.name,
-    type: activity.type,
-    sport_type: activity.sport_type,
-    start_date: activity.start_date,
-    start_date_local: activity.start_date_local,
+    name: activity.name || null,
+    type: activity.type || null,
+    sport_type: activity.sport_type || null,
+    start_date: activity.start_date || null,
+    start_date_local: activity.start_date_local || null,
     distance: activity.distance || 0,
     moving_time: activity.moving_time || 0,
     elapsed_time: activity.elapsed_time || 0,
     total_elevation_gain: activity.total_elevation_gain || 0,
-    average_speed: activity.average_speed,
-    max_speed: activity.max_speed,
-    average_heartrate: activity.average_heartrate,
-    max_heartrate: activity.max_heartrate,
-    calories: activity.calories,
-    suffer_score: activity.suffer_score,
-    description: activity.description,
-    gear_id: activity.gear_id,
-    trainer: activity.trainer || false,
-    commute: activity.commute || false,
-    manual: activity.manual || false,
-    private: activity.private || false,
+    average_speed: activity.average_speed || null,
+    max_speed: activity.max_speed || null,
+    average_heartrate: activity.average_heartrate || null,
+    max_heartrate: activity.max_heartrate || null,
+    calories: activity.calories || null,
+    suffer_score: activity.suffer_score || null,
+    description: activity.description || null,
+    gear_id: activity.gear_id || null,
+    trainer: activity.trainer === true,
+    commute: activity.commute === true,
+    manual: activity.manual === true,
+    private: activity.private === true,
     visibility: activity.visibility || 'everyone',
-    flagged: activity.flagged || false,
-    workout_type: activity.workout_type,
-    upload_id: activity.upload_id,
-    external_id: activity.external_id,
-    from_accepted_tag: activity.from_accepted_tag || false,
+    flagged: activity.flagged === true,
+    workout_type: activity.workout_type || null,
+    upload_id: activity.upload_id || null,
+    external_id: activity.external_id || null,
+    from_accepted_tag: activity.from_accepted_tag === true,
     segment_efforts: activity.segment_efforts || null,
     splits_metric: activity.splits_metric || null,
     splits_standard: activity.splits_standard || null,
     best_efforts: activity.best_efforts || null,
-    device_name: activity.device_name,
-    embed_token: activity.embed_token,
+    device_name: activity.device_name || null,
+    embed_token: activity.embed_token || null,
     photos: activity.photos || null,
     stats_visibility: activity.stats_visibility || null,
     similar_activities: activity.similar_activities || null,
     available_zones: activity.available_zones || null,
-    raw_data: activity, // Store complete Strava response
+    raw_data: activity || null, // Store complete Strava response
     synced_at: new Date().toISOString(),
   };
 }
@@ -219,11 +257,8 @@ async function updateUserProfile(userId: string, athleteInfo: any, totalActiviti
   };
 
   try {
-    // Try to update existing profile
-    await supabaseRequest("POST", "user_profiles", profileData, {
-      on_conflict: "user_id",
-      resolution: "merge-duplicates"
-    });
+    // Use Supabase upsert with proper headers
+    await supabaseUpsert("user_profiles", profileData, "user_id");
   } catch (error) {
     console.error("Failed to update user profile:", error);
   }
@@ -280,6 +315,22 @@ export async function POST(request: NextRequest) {
 
     console.log(`Inserting ${transformedActivities.length} activities into database...`);
 
+    // Validate all objects have the same structure
+    if (transformedActivities.length > 0) {
+      const firstActivityKeys = Object.keys(transformedActivities[0]).sort();
+      
+      for (let i = 1; i < transformedActivities.length; i++) {
+        const currentKeys = Object.keys(transformedActivities[i]).sort();
+        if (JSON.stringify(firstActivityKeys) !== JSON.stringify(currentKeys)) {
+          console.error(`Activity ${i} has different keys:`, {
+            first: firstActivityKeys,
+            current: currentKeys,
+            activity: transformedActivities[i]
+          });
+        }
+      }
+    }
+
     // Batch insert activities (Supabase handles upserts automatically with same ID)
     const batchSize = 100;
     let totalInserted = 0;
@@ -289,12 +340,38 @@ export async function POST(request: NextRequest) {
       const batch = transformedActivities.slice(i, i + batchSize);
       
       try {
+        // Validate batch consistency before inserting
+        if (batch.length > 0) {
+          const batchKeys = Object.keys(batch[0]).sort();
+          for (let j = 1; j < batch.length; j++) {
+            const activityKeys = Object.keys(batch[j]).sort();
+            if (JSON.stringify(batchKeys) !== JSON.stringify(activityKeys)) {
+              console.error(`Batch ${i}-${i + batchSize} has inconsistent keys at activity ${j}:`, {
+                expected: batchKeys,
+                actual: activityKeys,
+                activityId: batch[j].id
+              });
+            }
+          }
+        }
+        
         await supabaseRequest("POST", "activities", batch);
         totalInserted += batch.length;
         console.log(`Processed ${Math.min(i + batchSize, transformedActivities.length)} of ${transformedActivities.length} activities`);
       } catch (error) {
         console.error(`Failed to insert batch ${i}-${i + batchSize}:`, error);
-        // Continue with next batch
+        
+        // Try inserting activities one by one to identify the problematic one
+        console.log("Attempting individual inserts for this batch...");
+        for (let j = 0; j < batch.length; j++) {
+          try {
+            await supabaseRequest("POST", "activities", [batch[j]]);
+            totalInserted += 1;
+          } catch (singleError) {
+            console.error(`Failed to insert individual activity ${batch[j].id}:`, singleError);
+            console.error("Problematic activity data:", batch[j]);
+          }
+        }
       }
     }
 
