@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 interface TrainingSession {
   day: string;
@@ -19,49 +18,78 @@ interface TrainingPlan {
   user_id?: string;
 }
 
-// Create Supabase client on demand (server-side only)
-const getSupabaseClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: -1,
-      },
-    },
-  });
-};
+// Supabase configuration
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // For now, we'll use a simple user ID since we don't have auth implemented
-// In a real app, this would come from the authenticated user session
 const getCurrentUserId = (): string => {
-  // For demo purposes, using a fixed user ID
-  // In production, this would be extracted from the authenticated session
-  return "demo-user-001";
+  // Use a valid UUID format for the demo user
+  return "123e4567-e89b-12d3-a456-426614174000";
+};
+
+// Direct Supabase REST API calls
+const supabaseRequest = async (
+  method: string,
+  endpoint: string,
+  body?: any,
+  queryParams?: Record<string, string>
+) => {
+  let url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
+
+  if (queryParams) {
+    const params = new URLSearchParams(queryParams);
+    url += `?${params.toString()}`;
+  }
+
+  const headers: Record<string, string> = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+    Prefer: method === "POST" ? "return=representation" : "return=minimal",
+  };
+
+  const options: RequestInit = {
+    method,
+    headers,
+  };
+
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Supabase API Error:", {
+      status: response.status,
+      statusText: response.statusText,
+      url,
+      method,
+      body,
+      errorResponse: errorText,
+    });
+    throw new Error(
+      `Supabase API error: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  if (method === "DELETE") {
+    return null;
+  }
+
+  return response.json();
 };
 
 export async function GET() {
   try {
     const userId = getCurrentUserId();
-    const supabase = getSupabaseClient();
 
-    const { data: plans, error } = await supabase
-      .from("training_plans")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Supabase error:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch training plans" },
-        { status: 500 }
-      );
-    }
+    const plans = await supabaseRequest("GET", "training_plans", null, {
+      user_id: `eq.${userId}`,
+      order: "created_at.desc",
+    });
 
     return NextResponse.json({ plans: plans || [] });
   } catch (error) {
@@ -85,7 +113,6 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = getCurrentUserId();
-    const supabase = getSupabaseClient();
 
     const newPlan = {
       title: plan.title,
@@ -95,23 +122,11 @@ export async function POST(request: NextRequest) {
       user_id: userId,
     };
 
-    const { data, error } = await supabase
-      .from("training_plans")
-      .insert([newPlan])
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Supabase error:", error);
-      return NextResponse.json(
-        { error: "Failed to save training plan" },
-        { status: 500 }
-      );
-    }
+    const result = await supabaseRequest("POST", "training_plans", newPlan);
 
     return NextResponse.json({
       success: true,
-      plan: data,
+      plan: result[0],
     });
   } catch (error) {
     console.error("Error saving training plan:", error);
@@ -135,21 +150,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     const userId = getCurrentUserId();
-    const supabase = getSupabaseClient();
 
-    const { error } = await supabase
-      .from("training_plans")
-      .delete()
-      .eq("id", planId)
-      .eq("user_id", userId);
-
-    if (error) {
-      console.error("Supabase error:", error);
-      return NextResponse.json(
-        { error: "Failed to delete training plan" },
-        { status: 500 }
-      );
-    }
+    await supabaseRequest("DELETE", "training_plans", null, {
+      id: `eq.${planId}`,
+      user_id: `eq.${userId}`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
