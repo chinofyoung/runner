@@ -24,7 +24,7 @@ function formatDuration(seconds: number): string {
 async function fetchRealStravaData(accessToken: string) {
   try {
     const response = await fetch(
-      "https://www.strava.com/api/v3/athlete/activities?per_page=20",
+      "https://www.strava.com/api/v3/athlete/activities?per_page=100",
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -143,27 +143,31 @@ export async function GET(request: NextRequest) {
     // Recent activities for dashboard
     const recentActivities = runningActivities
       .slice(0, 3)
-      .map((activity: any) => ({
-        id: activity.id,
-        name: activity.name,
-        date: new Date(
+      .map((activity: any) => {
+        const activityDate = new Date(
           activity.start_date_local || activity.start_date
-        ).toLocaleDateString("en", {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        distance: formatDistance(activity.distance),
-        duration: formatDuration(activity.moving_time),
-        pace: convertToKmPace(activity.average_speed),
-        calories:
-          activity.calories || Math.round((activity.distance / 1000) * 65),
-        heartrate: activity.average_heartrate || 0,
-        elevation: activity.total_elevation_gain || 0,
-        type: activity.type || activity.sport_type,
-      }));
+        );
+        return {
+          id: activity.id,
+          name: activity.name,
+          date: activityDate.toLocaleDateString("en", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          rawDate: activityDate.toISOString().split('T')[0], // YYYY-MM-DD format for easier comparison
+          distance: formatDistance(activity.distance),
+          duration: formatDuration(activity.moving_time),
+          pace: convertToKmPace(activity.average_speed),
+          calories:
+            activity.calories || Math.round((activity.distance / 1000) * 65),
+          heartrate: activity.average_heartrate || 0,
+          elevation: activity.total_elevation_gain || 0,
+          type: activity.type || activity.sport_type,
+        };
+      });
 
     // Summary stats
     const totalDistance =
