@@ -922,7 +922,7 @@ export default function Home() {
                       </p>
                     </div>
                     <button
-                      onClick={() => setActiveTab("progress")}
+                      onClick={() => (window.location.href = "/runs")}
                       className="text-green-500 text-xs font-medium hover:underline"
                     >
                       View All →
