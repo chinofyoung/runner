@@ -194,8 +194,8 @@ export default function Zone2RunsWidget({
         </div>
       )}
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      {/* Summary Stats - 2x2 Grid */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-blue-50 rounded-lg p-3 text-center">
           <div className="text-lg font-bold text-blue-600">
             {zone2Data.summary.totalZone2Runs}
@@ -296,29 +296,27 @@ export default function Zone2RunsWidget({
                 <p className="text-xs text-gray-500 mb-1">
                   {formatDate(run.rawDate || run.date)}
                 </p>
-                <div className="flex items-center space-x-2 text-xs text-gray-600">
+                {/* Metrics in 2x2 grid for better small widget support */}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
                   <div className="flex items-center space-x-1">
                     <MapPin className="w-3 h-3" />
                     <span>{run.distance}km</span>
                   </div>
-                  <span>•</span>
                   <div className="flex items-center space-x-1">
                     <Clock className="w-3 h-3" />
                     <span>{run.duration}</span>
                   </div>
-                  <span>•</span>
                   <div className="flex items-center space-x-1">
                     <TrendingUp className="w-3 h-3" />
                     <span>{run.pace}'/km</span>
                   </div>
-                  {run.heartrate > 0 && (
-                    <>
-                      <span>•</span>
-                      <div className="flex items-center space-x-1">
-                        <Heart className="w-3 h-3" />
-                        <span>{run.heartrate}bpm</span>
-                      </div>
-                    </>
+                  {run.heartrate > 0 ? (
+                    <div className="flex items-center space-x-1">
+                      <Heart className="w-3 h-3" />
+                      <span>{run.heartrate}bpm</span>
+                    </div>
+                  ) : (
+                    <div></div>
                   )}
                 </div>
               </div>

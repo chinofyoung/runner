@@ -206,9 +206,7 @@ export default function Dashboard() {
     [key: string]: "small" | "medium" | "large";
   }>({
     todaysActivity: "medium",
-    calories: "small",
-    heartRate: "small",
-    steps: "small",
+    metrics: "medium",
     performanceChart: "large",
     trainingPlan: "large",
     recentRuns: "medium",
@@ -216,9 +214,7 @@ export default function Dashboard() {
   });
   const [widgetOrder, setWidgetOrder] = useState<string[]>([
     "todaysActivity",
-    "calories",
-    "heartRate",
-    "steps",
+    "metrics",
     "performanceChart",
     "trainingPlan",
     "recentRuns",
@@ -271,9 +267,7 @@ export default function Dashboard() {
     // Base row calculations - more conservative to prevent overlaps
     const baseRows = {
       todaysActivity: todaysActivity ? 3 : 4,
-      calories: 3,
-      heartRate: 3,
-      steps: 3,
+      metrics: 3,
       performanceChart: 6,
       trainingPlan: 6,
       recentRuns: 5,
@@ -345,9 +339,7 @@ export default function Dashboard() {
   const resetLayout = () => {
     setWidgetSizes({
       todaysActivity: "medium",
-      calories: "small",
-      heartRate: "small",
-      steps: "small",
+      metrics: "medium",
       performanceChart: "large",
       trainingPlan: "large",
       recentRuns: "medium",
@@ -355,9 +347,7 @@ export default function Dashboard() {
     });
     setWidgetOrder([
       "todaysActivity",
-      "calories",
-      "heartRate",
-      "steps",
+      "metrics",
       "performanceChart",
       "trainingPlan",
       "recentRuns",
@@ -490,6 +480,362 @@ export default function Dashboard() {
       const activityDate = new Date(activity.rawDate || activity.date);
       return activityDate.toDateString() === today;
     });
+  };
+
+  // Dynamic widget rendering function
+  const renderWidget = (widgetId: string) => {
+    const getWidgetClasses = (widgetId: string) => {
+      const baseClasses = "group relative";
+      const editModeClasses = isEditMode
+        ? "ring-2 ring-blue-200 hover:ring-blue-300"
+        : "";
+      const dragClasses = `${draggedWidget === widgetId ? "opacity-50" : ""} ${
+        dragOverWidget === widgetId ? "ring-4 ring-blue-400" : ""
+      }`;
+
+      if (widgetId === "trainingPlan") {
+        return `${baseClasses} ${editModeClasses} ${dragClasses}`;
+      }
+
+      return `bg-white rounded-xl shadow-sm p-4 sm:p-6 ${baseClasses} ${editModeClasses} ${dragClasses}`;
+    };
+
+    const getWidgetProps = (widgetId: string) => ({
+      className: getWidgetClasses(widgetId),
+      style: {
+        gridRowEnd: `span ${getRowSpan(widgetId, widgetSizes[widgetId])}`,
+        gridColumnEnd: `span ${getWidgetSpan(widgetSizes[widgetId])}`,
+      },
+      draggable: isEditMode,
+      onDragStart: (e: React.DragEvent) => handleDragStart(e, widgetId),
+      onDragOver: (e: React.DragEvent) => handleDragOver(e, widgetId),
+      onDragLeave: handleDragLeave,
+      onDrop: (e: React.DragEvent) => handleDrop(e, widgetId),
+      onDragEnd: handleDragEnd,
+    });
+
+    const todaysActivity = getTodaysActivity();
+
+    switch (widgetId) {
+      case "todaysActivity":
+        return (
+          <div key={widgetId} {...getWidgetProps(widgetId)}>
+            <WidgetResizeControls
+              widgetId={widgetId}
+              currentSize={widgetSizes[widgetId]}
+            />
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Today's Activity
+              </h2>
+              <Calendar className="w-5 h-5 text-gray-400" />
+            </div>
+            {todaysActivity ? (
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold">🏃</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-800">
+                    {todaysActivity.name}
+                  </h3>
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                    <span>{todaysActivity.distance}km</span>
+                    <span>•</span>
+                    <span>{todaysActivity.duration}</span>
+                    <span>•</span>
+                    <span>{todaysActivity.pace}'/km</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-green-600">
+                    {todaysActivity.calories}
+                  </div>
+                  <div className="text-xs text-gray-500">calories</div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">🏃‍♂️</span>
+                </div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">
+                  No activity today yet
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Ready to get moving? Your next run is waiting!
+                </p>
+                <button className="bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors">
+                  Plan Today's Run
+                </button>
+              </div>
+            )}
+          </div>
+        );
+
+      case "metrics":
+        return (
+          <div key={widgetId} {...getWidgetProps(widgetId)}>
+            <WidgetResizeControls
+              widgetId={widgetId}
+              currentSize={widgetSizes[widgetId]}
+            />
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-800">
+                Key Metrics
+              </h2>
+              <MoreVertical className="w-5 h-5 text-gray-400" />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Flame className="w-5 h-5 text-orange-500" />
+                </div>
+                <div className="text-xl font-bold text-gray-800">
+                  {stravaData?.summary.totalCalories || 520}
+                </div>
+                <div className="text-xs text-gray-500">kcal</div>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Heart className="w-5 h-5 text-red-500" />
+                </div>
+                <div className="text-xl font-bold text-gray-800">
+                  {stravaData?.summary.avgHeartrate || 102}
+                </div>
+                <div className="text-xs text-gray-500">bpm</div>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Footprints className="w-5 h-5 text-purple-500" />
+                </div>
+                <div className="text-xl font-bold text-gray-800">
+                  {Math.round((stravaData?.summary.totalDistance || 67) * 1300)}
+                </div>
+                <div className="text-xs text-gray-500">steps</div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "performanceChart":
+        return (
+          <div key={widgetId} {...getWidgetProps(widgetId)}>
+            <WidgetResizeControls
+              widgetId={widgetId}
+              currentSize={widgetSizes[widgetId]}
+            />
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Recent Pace Trends
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {stravaData?.recentActivities &&
+                  stravaData.recentActivities.length > 0
+                    ? `Your last ${Math.min(
+                        stravaData.recentActivities.length,
+                        10
+                      )} runs`
+                    : "Your running speed over time"}
+                </p>
+              </div>
+              {stravaData?.isCachedData && (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                  Cached Data
+                </span>
+              )}
+            </div>
+            <div className="h-48 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trackingData}>
+                  <XAxis
+                    dataKey="activityName"
+                    tick={{ fontSize: 10, fill: "#6B7280" }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis hide />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length > 0) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                            <p className="font-semibold text-gray-800 mb-2">
+                              {data.fullName || data.activityName}
+                            </p>
+                            <div className="space-y-1 text-sm">
+                              <p className="text-gray-600">
+                                <span className="font-medium">Date:</span>{" "}
+                                {data.date}
+                              </p>
+                              <p className="text-gray-600">
+                                <span className="font-medium">Speed:</span>{" "}
+                                {data.speed} km/h
+                              </p>
+                              <p className="text-gray-600">
+                                <span className="font-medium">Pace:</span>{" "}
+                                {data.pace}'/km
+                              </p>
+                              <p className="text-gray-600">
+                                <span className="font-medium">Distance:</span>{" "}
+                                {data.distance} km
+                              </p>
+                              {data.heartrate && (
+                                <p className="text-gray-600">
+                                  <span className="font-medium">Avg HR:</span>{" "}
+                                  {data.heartrate} bpm
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar dataKey="speed" fill="#10B981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        );
+
+      case "trainingPlan":
+        return (
+          <div
+            key={widgetId}
+            {...getWidgetProps(widgetId)}
+            className={`${getWidgetClasses(widgetId)} ${
+              isEditMode ? "rounded-xl" : ""
+            }`}
+          >
+            <WidgetResizeControls
+              widgetId={widgetId}
+              currentSize={widgetSizes[widgetId]}
+            />
+            <TrainingPlan refreshTrigger={trainingPlanRefresh} />
+          </div>
+        );
+
+      case "recentRuns":
+        return (
+          <div key={widgetId} {...getWidgetProps(widgetId)}>
+            <WidgetResizeControls
+              widgetId={widgetId}
+              currentSize={widgetSizes[widgetId]}
+            />
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-gray-800">Recent Runs</h3>
+                <p className="text-xs text-gray-500">
+                  {stravaConnected
+                    ? "Your latest activities"
+                    : "Connect Strava to see runs"}
+                </p>
+              </div>
+              <button
+                onClick={() => router.push("/runs")}
+                className="text-green-500 text-xs font-medium hover:underline"
+              >
+                View All →
+              </button>
+            </div>
+            {stravaData?.recentActivities &&
+            stravaData.recentActivities.length > 0 ? (
+              <div className="space-y-3">
+                {stravaData.recentActivities.slice(0, 4).map((run) => (
+                  <div
+                    key={run.id}
+                    className="group p-3 rounded-lg border border-gray-100 hover:border-green-200 hover:bg-green-50 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white text-xs">🏃</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-800 text-sm truncate group-hover:text-green-800 transition-colors">
+                          {run.name}
+                        </h4>
+                        <p className="text-xs text-gray-500 mb-1">{run.date}</p>
+                        <div className="flex items-center space-x-2 text-xs text-gray-600">
+                          <span>{run.distance}km</span>
+                          <span>•</span>
+                          <span>{run.duration}</span>
+                          <span>•</span>
+                          <span>{run.pace}'/km</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : !stravaConnected ? (
+              <div className="text-center py-6">
+                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-lg">🏃‍♂️</span>
+                </div>
+                <h4 className="text-sm font-medium text-gray-800 mb-2">
+                  Connect Strava
+                </h4>
+                <p className="text-xs text-gray-600 mb-3">
+                  See your recent runs here
+                </p>
+                <button
+                  onClick={() => router.push("/settings")}
+                  className="bg-orange-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-orange-600 transition-colors"
+                >
+                  Connect →
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-lg">🏃‍♂️</span>
+                </div>
+                <h4 className="text-sm font-medium text-gray-800 mb-2">
+                  No Recent Runs
+                </h4>
+                <p className="text-xs text-gray-600">
+                  Your activities will appear here
+                </p>
+              </div>
+            )}
+          </div>
+        );
+
+      case "zone2":
+        return (
+          <div key={widgetId} {...getWidgetProps(widgetId)}>
+            <WidgetResizeControls
+              widgetId={widgetId}
+              currentSize={widgetSizes[widgetId]}
+            />
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-gray-800">
+                  Zone 2 / Easy Runs
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {stravaConnected
+                    ? "Aerobic base training runs"
+                    : "Connect Strava to analyze zones"}
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+                <span className="text-xs text-gray-500">Zone 2</span>
+              </div>
+            </div>
+            <Zone2RunsWidget stravaConnected={stravaConnected} />
+          </div>
+        );
+
+      default:
+        return null;
+    }
   };
 
   const syncStravaData = async () => {
@@ -870,434 +1216,8 @@ export default function Dashboard() {
               gridAutoFlow: "row",
             }}
           >
-            {/* Today's Activity Card - Medium height */}
-            <div
-              className={`bg-white rounded-xl p-6 shadow-sm group relative ${
-                isEditMode ? "ring-2 ring-blue-200 hover:ring-blue-300" : ""
-              } ${draggedWidget === "todaysActivity" ? "opacity-50" : ""} ${
-                dragOverWidget === "todaysActivity"
-                  ? "ring-4 ring-blue-400"
-                  : ""
-              }`}
-              style={{
-                gridRowEnd: `span ${getRowSpan(
-                  "todaysActivity",
-                  widgetSizes.todaysActivity
-                )}`,
-                gridColumnEnd: `span ${getWidgetSpan(
-                  widgetSizes.todaysActivity
-                )}`,
-              }}
-              draggable={isEditMode}
-              onDragStart={(e) => handleDragStart(e, "todaysActivity")}
-              onDragOver={(e) => handleDragOver(e, "todaysActivity")}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, "todaysActivity")}
-              onDragEnd={handleDragEnd}
-            >
-              <WidgetResizeControls
-                widgetId="todaysActivity"
-                currentSize={widgetSizes.todaysActivity}
-              />
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  Today's Activity
-                </h2>
-                <Calendar className="w-5 h-5 text-gray-400" />
-              </div>
-
-              {todaysActivity ? (
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold">🏃</span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800">
-                      {todaysActivity.name}
-                    </h3>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                      <span>{todaysActivity.distance}km</span>
-                      <span>•</span>
-                      <span>{todaysActivity.duration}</span>
-                      <span>•</span>
-                      <span>{todaysActivity.pace}'/km</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-green-600">
-                      {todaysActivity.calories}
-                    </div>
-                    <div className="text-xs text-gray-500">calories</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl">🏃‍♂️</span>
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-800 mb-2">
-                    No activity today yet
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    Ready to get moving? Your next run is waiting!
-                  </p>
-                  <button className="bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors">
-                    Plan Today's Run
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Metrics Cards - Small height */}
-            <div
-              className={`bg-white rounded-xl p-4 sm:p-6 shadow-sm group relative ${
-                isEditMode ? "ring-2 ring-blue-200 hover:ring-blue-300" : ""
-              }`}
-              style={{
-                gridRowEnd: `span ${getRowSpan(
-                  "calories",
-                  widgetSizes.calories
-                )}`,
-                gridColumnEnd: `span ${getWidgetSpan(widgetSizes.calories)}`,
-              }}
-            >
-              <WidgetResizeControls
-                widgetId="calories"
-                currentSize={widgetSizes.calories}
-              />
-              <div className="flex items-center justify-between mb-3">
-                <Flame className="w-6 h-6 text-orange-500" />
-                <MoreVertical className="w-5 h-5 text-gray-400" />
-              </div>
-              <div className="space-y-1">
-                <div className="text-2xl font-bold text-gray-800">
-                  {stravaData?.summary.totalCalories || 520}
-                </div>
-                <div className="text-sm text-gray-500">kcal</div>
-              </div>
-              <div className="text-xs text-gray-400 mt-2">Calories</div>
-            </div>
-
-            <div
-              className={`bg-white rounded-xl p-4 sm:p-6 shadow-sm group relative ${
-                isEditMode ? "ring-2 ring-blue-200 hover:ring-blue-300" : ""
-              }`}
-              style={{
-                gridRowEnd: `span ${getRowSpan(
-                  "heartRate",
-                  widgetSizes.heartRate
-                )}`,
-                gridColumnEnd: `span ${getWidgetSpan(widgetSizes.heartRate)}`,
-              }}
-            >
-              <WidgetResizeControls
-                widgetId="heartRate"
-                currentSize={widgetSizes.heartRate}
-              />
-              <div className="flex items-center justify-between mb-3">
-                <Heart className="w-6 h-6 text-red-500" />
-                <MoreVertical className="w-5 h-5 text-gray-400" />
-              </div>
-              <div className="space-y-1">
-                <div className="text-2xl font-bold text-gray-800">
-                  {stravaData?.summary.avgHeartrate || 102}
-                </div>
-                <div className="text-sm text-gray-500">bpm</div>
-              </div>
-              <div className="text-xs text-gray-400 mt-2">Heart Rate</div>
-            </div>
-
-            <div
-              className={`bg-white rounded-xl p-4 sm:p-6 shadow-sm group relative ${
-                isEditMode ? "ring-2 ring-blue-200 hover:ring-blue-300" : ""
-              }`}
-              style={{
-                gridRowEnd: `span ${getRowSpan("steps", widgetSizes.steps)}`,
-                gridColumnEnd: `span ${getWidgetSpan(widgetSizes.steps)}`,
-              }}
-            >
-              <WidgetResizeControls
-                widgetId="steps"
-                currentSize={widgetSizes.steps}
-              />
-              <div className="flex items-center justify-between mb-3">
-                <Footprints className="w-6 h-6 text-purple-500" />
-                <MoreVertical className="w-5 h-5 text-gray-400" />
-              </div>
-              <div className="space-y-1">
-                <div className="text-2xl font-bold text-gray-800">
-                  {Math.round((stravaData?.summary.totalDistance || 67) * 1300)}
-                </div>
-                <div className="text-sm text-gray-500">steps</div>
-              </div>
-              <div className="text-xs text-gray-400 mt-2">Steps</div>
-            </div>
-
-            {/* Performance Chart - Large height */}
-            <div
-              className={`bg-white rounded-xl shadow-sm p-4 sm:p-6 group relative ${
-                isEditMode ? "ring-2 ring-blue-200 hover:ring-blue-300" : ""
-              }`}
-              style={{
-                gridRowEnd: `span ${getRowSpan(
-                  "performanceChart",
-                  widgetSizes.performanceChart
-                )}`,
-                gridColumnEnd: `span ${getWidgetSpan(
-                  widgetSizes.performanceChart
-                )}`,
-              }}
-            >
-              <WidgetResizeControls
-                widgetId="performanceChart"
-                currentSize={widgetSizes.performanceChart}
-              />
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-800">
-                    Recent Pace Trends
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {stravaData?.recentActivities &&
-                    stravaData.recentActivities.length > 0
-                      ? `Your last ${Math.min(
-                          stravaData.recentActivities.length,
-                          10
-                        )} runs`
-                      : "Your running speed over time"}
-                  </p>
-                </div>
-                {stravaData?.isCachedData && (
-                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                    Cached Data
-                  </span>
-                )}
-              </div>
-              <div className="h-48 sm:h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={trackingData}>
-                    <XAxis
-                      dataKey="activityName"
-                      tick={{ fontSize: 10, fill: "#6B7280" }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <YAxis hide />
-                    <Tooltip
-                      content={({ active, payload, label }) => {
-                        if (active && payload && payload.length > 0) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                              <p className="font-semibold text-gray-800 mb-2">
-                                {data.fullName || data.activityName}
-                              </p>
-                              <div className="space-y-1 text-sm">
-                                <p className="text-gray-600">
-                                  <span className="font-medium">Date:</span>{" "}
-                                  {data.date}
-                                </p>
-                                <p className="text-gray-600">
-                                  <span className="font-medium">Speed:</span>{" "}
-                                  {data.speed} km/h
-                                </p>
-                                <p className="text-gray-600">
-                                  <span className="font-medium">Pace:</span>{" "}
-                                  {data.pace}'/km
-                                </p>
-                                <p className="text-gray-600">
-                                  <span className="font-medium">Distance:</span>{" "}
-                                  {data.distance} km
-                                </p>
-                                {data.heartrate && (
-                                  <p className="text-gray-600">
-                                    <span className="font-medium">Avg HR:</span>{" "}
-                                    {data.heartrate} bpm
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Bar dataKey="speed" fill="#10B981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Training Plan - Large height */}
-            <div
-              className={`group relative ${
-                isEditMode
-                  ? "ring-2 ring-blue-200 hover:ring-blue-300 rounded-xl"
-                  : ""
-              }`}
-              style={{
-                gridRowEnd: `span ${getRowSpan(
-                  "trainingPlan",
-                  widgetSizes.trainingPlan
-                )}`,
-                gridColumnEnd: `span ${getWidgetSpan(
-                  widgetSizes.trainingPlan
-                )}`,
-              }}
-            >
-              <WidgetResizeControls
-                widgetId="trainingPlan"
-                currentSize={widgetSizes.trainingPlan}
-              />
-              <TrainingPlan refreshTrigger={trainingPlanRefresh} />
-            </div>
-
-            {/* Recent Runs - Medium height */}
-            <div
-              className={`bg-white rounded-xl p-6 shadow-sm group relative ${
-                isEditMode ? "ring-2 ring-blue-200 hover:ring-blue-300" : ""
-              }`}
-              style={{
-                gridRowEnd: `span ${getRowSpan(
-                  "recentRuns",
-                  widgetSizes.recentRuns
-                )}`,
-                gridColumnEnd: `span ${getWidgetSpan(widgetSizes.recentRuns)}`,
-              }}
-            >
-              <WidgetResizeControls
-                widgetId="recentRuns"
-                currentSize={widgetSizes.recentRuns}
-              />
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-gray-800">Recent Runs</h3>
-                  <p className="text-xs text-gray-500">
-                    {stravaConnected
-                      ? "Your latest activities"
-                      : "Connect Strava to see runs"}
-                  </p>
-                </div>
-                <button
-                  onClick={() => router.push("/runs")}
-                  className="text-green-500 text-xs font-medium hover:underline"
-                >
-                  View All →
-                </button>
-              </div>
-
-              {loading ? (
-                <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="animate-pulse">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
-                        <div className="flex-1">
-                          <div className="h-3 bg-gray-200 rounded mb-2 w-3/4"></div>
-                          <div className="h-2 bg-gray-200 rounded w-1/2"></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : stravaData?.recentActivities &&
-                stravaData.recentActivities.length > 0 ? (
-                <div className="space-y-3">
-                  {stravaData.recentActivities.slice(0, 3).map((run, index) => (
-                    <div
-                      key={run.id}
-                      className="group p-3 rounded-lg border border-gray-100 hover:border-green-200 hover:bg-green-50 transition-all cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
-                          <span className="text-white text-xs">🏃</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-800 text-sm truncate group-hover:text-green-800 transition-colors">
-                            {run.name}
-                          </h4>
-                          <p className="text-xs text-gray-500 mb-1">
-                            {run.date}
-                          </p>
-                          <div className="flex items-center space-x-2 text-xs text-gray-600">
-                            <span>{run.distance}km</span>
-                            <span>•</span>
-                            <span>{run.duration}</span>
-                            <span>•</span>
-                            <span>{run.pace}'/km</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : !stravaConnected ? (
-                <div className="text-center py-6">
-                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-lg">🏃‍♂️</span>
-                  </div>
-                  <h4 className="text-sm font-medium text-gray-800 mb-2">
-                    Connect Strava
-                  </h4>
-                  <p className="text-xs text-gray-600 mb-3">
-                    See your recent runs here
-                  </p>
-                  <button
-                    onClick={() => router.push("/settings")}
-                    className="bg-orange-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-orange-600 transition-colors"
-                  >
-                    Connect →
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-lg">🏃‍♂️</span>
-                  </div>
-                  <h4 className="text-sm font-medium text-gray-800 mb-2">
-                    No Recent Runs
-                  </h4>
-                  <p className="text-xs text-gray-600">
-                    Your activities will appear here
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Zone 2 / Easy Runs Section - Large height */}
-            <div
-              className={`bg-white rounded-xl p-6 shadow-sm group relative ${
-                isEditMode ? "ring-2 ring-blue-200 hover:ring-blue-300" : ""
-              }`}
-              style={{
-                gridRowEnd: `span ${getRowSpan("zone2", widgetSizes.zone2)}`,
-                gridColumnEnd: `span ${getWidgetSpan(widgetSizes.zone2)}`,
-              }}
-            >
-              <WidgetResizeControls
-                widgetId="zone2"
-                currentSize={widgetSizes.zone2}
-              />
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-gray-800">
-                    Zone 2 / Easy Runs
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    {stravaConnected
-                      ? "Aerobic base training runs"
-                      : "Connect Strava to analyze zones"}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-                  <span className="text-xs text-gray-500">Zone 2</span>
-                </div>
-              </div>
-
-              <Zone2RunsWidget stravaConnected={stravaConnected} />
-            </div>
+            {/* Dynamic Widget Rendering */}
+            {widgetOrder.map((widgetId) => renderWidget(widgetId))}
           </div>
         </div>
       </main>
