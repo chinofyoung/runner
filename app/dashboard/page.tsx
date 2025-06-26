@@ -207,6 +207,7 @@ export default function Dashboard() {
   }>({
     todaysActivity: "medium",
     metrics: "medium",
+    todayTomorrow: "medium",
     performanceChart: "large",
     trainingPlan: "large",
     recentRuns: "medium",
@@ -215,6 +216,7 @@ export default function Dashboard() {
   const [widgetOrder, setWidgetOrder] = useState<string[]>([
     "todaysActivity",
     "metrics",
+    "todayTomorrow",
     "performanceChart",
     "trainingPlan",
     "recentRuns",
@@ -301,11 +303,40 @@ export default function Dashboard() {
       const savedLayout = localStorage.getItem("dashboardLayout");
       if (savedLayout) {
         const layoutData = JSON.parse(savedLayout);
+
+        // Default configuration for new widgets
+        const defaultSizes = {
+          todaysActivity: "medium",
+          metrics: "medium",
+          todayTomorrow: "medium",
+          performanceChart: "large",
+          trainingPlan: "large",
+          recentRuns: "medium",
+          zone2: "large",
+        };
+
+        const defaultOrder = [
+          "todaysActivity",
+          "metrics",
+          "todayTomorrow",
+          "performanceChart",
+          "trainingPlan",
+          "recentRuns",
+          "zone2",
+        ];
+
         if (layoutData.widgetSizes) {
-          setWidgetSizes(layoutData.widgetSizes);
+          // Merge saved sizes with defaults for any missing widgets
+          setWidgetSizes({ ...defaultSizes, ...layoutData.widgetSizes });
         }
+
         if (layoutData.widgetOrder) {
-          setWidgetOrder(layoutData.widgetOrder);
+          // Add any missing widgets to the saved order
+          const savedOrder = layoutData.widgetOrder;
+          const missingWidgets = defaultOrder.filter(
+            (widget) => !savedOrder.includes(widget)
+          );
+          setWidgetOrder([...savedOrder, ...missingWidgets]);
         }
       }
     } catch (error) {
@@ -317,6 +348,7 @@ export default function Dashboard() {
     setWidgetSizes({
       todaysActivity: "medium",
       metrics: "medium",
+      todayTomorrow: "medium",
       performanceChart: "large",
       trainingPlan: "large",
       recentRuns: "medium",
@@ -325,6 +357,7 @@ export default function Dashboard() {
     setWidgetOrder([
       "todaysActivity",
       "metrics",
+      "todayTomorrow",
       "performanceChart",
       "trainingPlan",
       "recentRuns",
@@ -457,6 +490,45 @@ export default function Dashboard() {
       const activityDate = new Date(activity.rawDate || activity.date);
       return activityDate.toDateString() === today;
     });
+  };
+
+  // Training plan state
+  const [trainingPlanData, setTrainingPlanData] = useState<any>(null);
+  const [trainingPlanLoading, setTrainingPlanLoading] = useState(false);
+
+  const fetchTrainingPlan = async () => {
+    try {
+      setTrainingPlanLoading(true);
+      const response = await fetch("/api/strava/training-plan");
+      if (response.ok) {
+        const data = await response.json();
+        setTrainingPlanData(data);
+      }
+    } catch (error) {
+      console.error("Error fetching training plan:", error);
+    } finally {
+      setTrainingPlanLoading(false);
+    }
+  };
+
+  const getTodayTomorrowSessions = () => {
+    if (!trainingPlanData?.trainingPlan) return { today: null, tomorrow: null };
+
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const todayDay = today.toLocaleDateString("en", { weekday: "long" });
+    const tomorrowDay = tomorrow.toLocaleDateString("en", { weekday: "long" });
+
+    const todaySession = trainingPlanData.trainingPlan.find(
+      (session: any) => session.day === todayDay
+    );
+    const tomorrowSession = trainingPlanData.trainingPlan.find(
+      (session: any) => session.day === tomorrowDay
+    );
+
+    return { today: todaySession, tomorrow: tomorrowSession };
   };
 
   // Dynamic widget rendering function
@@ -595,6 +667,172 @@ export default function Dashboard() {
                 <div className="text-xs text-gray-500">steps</div>
               </div>
             </div>
+          </div>
+        );
+
+      case "todayTomorrow":
+        const { today, tomorrow } = getTodayTomorrowSessions();
+
+        const getTypeColor = (type: string) => {
+          switch (type) {
+            case "easy":
+              return "bg-green-100 text-green-800";
+            case "tempo":
+              return "bg-orange-100 text-orange-800";
+            case "interval":
+              return "bg-red-100 text-red-800";
+            case "long":
+              return "bg-blue-100 text-blue-800";
+            case "rest":
+              return "bg-gray-100 text-gray-800";
+            default:
+              return "bg-gray-100 text-gray-800";
+          }
+        };
+
+        const getTypeIcon = (type: string) => {
+          switch (type) {
+            case "easy":
+              return "🚶‍♂️";
+            case "tempo":
+              return "🏃‍♂️";
+            case "interval":
+              return "⚡";
+            case "long":
+              return "🏃‍♀️";
+            case "rest":
+              return "😴";
+            default:
+              return "🏃";
+          }
+        };
+
+        return (
+          <div key={widgetId} {...getWidgetProps(widgetId)}>
+            <WidgetResizeControls
+              widgetId={widgetId}
+              currentSize={widgetSizes[widgetId]}
+            />
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-800">
+                Training Schedule
+              </h2>
+              <Calendar className="w-5 h-5 text-gray-400" />
+            </div>
+
+            {trainingPlanLoading ? (
+              <div className="space-y-3">
+                <div className="animate-pulse">
+                  <div className="h-16 bg-gray-200 rounded-lg mb-2"></div>
+                  <div className="h-16 bg-gray-200 rounded-lg"></div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Today's Training */}
+                <div className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-gray-800 text-sm">
+                      Today
+                    </h3>
+                    <span className="text-xs text-gray-500">
+                      {new Date().toLocaleDateString("en", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  {today ? (
+                    <div className="flex items-center space-x-3">
+                      <div className="text-lg">{getTypeIcon(today.type)}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(
+                              today.type
+                            )}`}
+                          >
+                            {today.type.charAt(0).toUpperCase() +
+                              today.type.slice(1)}
+                          </span>
+                          {today.completed && (
+                            <span className="text-xs text-green-600 font-medium">
+                              ✓ Completed
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 mb-1">
+                          {today.description}
+                        </p>
+                        {today.duration !== "Rest" && (
+                          <div className="flex items-center space-x-3 text-xs text-gray-500">
+                            <span>{today.duration}</span>
+                            {today.distance && <span>{today.distance}</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-2">
+                      <p className="text-sm text-gray-500">
+                        No training planned
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tomorrow's Training */}
+                <div className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-gray-800 text-sm">
+                      Tomorrow
+                    </h3>
+                    <span className="text-xs text-gray-500">
+                      {new Date(Date.now() + 86400000).toLocaleDateString(
+                        "en",
+                        { month: "short", day: "numeric" }
+                      )}
+                    </span>
+                  </div>
+                  {tomorrow ? (
+                    <div className="flex items-center space-x-3">
+                      <div className="text-lg">
+                        {getTypeIcon(tomorrow.type)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(
+                              tomorrow.type
+                            )}`}
+                          >
+                            {tomorrow.type.charAt(0).toUpperCase() +
+                              tomorrow.type.slice(1)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-1">
+                          {tomorrow.description}
+                        </p>
+                        {tomorrow.duration !== "Rest" && (
+                          <div className="flex items-center space-x-3 text-xs text-gray-500">
+                            <span>{tomorrow.duration}</span>
+                            {tomorrow.distance && (
+                              <span>{tomorrow.distance}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-2">
+                      <p className="text-sm text-gray-500">
+                        No training planned
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -982,7 +1220,11 @@ export default function Dashboard() {
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
-      await Promise.all([fetchStravaData(), fetchSyncStatus()]);
+      await Promise.all([
+        fetchStravaData(),
+        fetchSyncStatus(),
+        fetchTrainingPlan(),
+      ]);
       setLoading(false);
 
       // Load saved layout
