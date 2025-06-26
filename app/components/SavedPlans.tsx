@@ -10,6 +10,8 @@ import {
   ChevronDown,
   ChevronUp,
   BookOpen,
+  CheckCircle,
+  Play,
 } from "lucide-react";
 
 interface TrainingSession {
@@ -30,13 +32,20 @@ interface TrainingPlan {
   user_id?: string;
 }
 
-export default function SavedPlans() {
+interface SavedPlansProps {
+  onPlanSelected?: () => void;
+}
+
+export default function SavedPlans({ onPlanSelected }: SavedPlansProps = {}) {
   const [plans, setPlans] = useState<TrainingPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [selectingPlan, setSelectingPlan] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPlans();
+    fetchActivePlan();
   }, []);
 
   const fetchPlans = async () => {
@@ -53,6 +62,58 @@ export default function SavedPlans() {
     }
   };
 
+  const fetchActivePlan = async () => {
+    try {
+      const response = await fetch("/api/strava/training-plan");
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedPlanId(data.selectedPlan?.id || null);
+      }
+    } catch (error) {
+      console.error("Error fetching active plan:", error);
+    }
+  };
+
+  const selectPlan = async (planId: string) => {
+    setSelectingPlan(planId);
+    try {
+      const response = await fetch("/api/strava/training-plan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ planId }),
+      });
+
+      if (response.ok) {
+        setSelectedPlanId(planId);
+        onPlanSelected?.();
+        // Show success message or notification here if needed
+      } else {
+        console.error("Failed to select plan");
+      }
+    } catch (error) {
+      console.error("Error selecting plan:", error);
+    } finally {
+      setSelectingPlan(null);
+    }
+  };
+
+  const clearActivePlan = async () => {
+    try {
+      const response = await fetch("/api/strava/training-plan", {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setSelectedPlanId(null);
+        onPlanSelected?.();
+      }
+    } catch (error) {
+      console.error("Error clearing active plan:", error);
+    }
+  };
+
   const deletePlan = async (planId: string) => {
     try {
       const response = await fetch(`/api/training-plans?id=${planId}`, {
@@ -64,6 +125,10 @@ export default function SavedPlans() {
         // Collapse if we're deleting the expanded plan
         if (expandedPlan === planId) {
           setExpandedPlan(null);
+        }
+        // Clear active plan if we're deleting it
+        if (selectedPlanId === planId) {
+          clearActivePlan();
         }
       }
     } catch (error) {
@@ -155,13 +220,34 @@ export default function SavedPlans() {
           </h2>
           <p className="text-gray-500 text-sm sm:text-base">
             {plans.length} saved plan{plans.length !== 1 ? "s" : ""}
+            {selectedPlanId && (
+              <span className="ml-2">
+                • Active:{" "}
+                {plans.find((p) => p.id === selectedPlanId)?.title || "Unknown"}
+              </span>
+            )}
           </p>
         </div>
+        {selectedPlanId && (
+          <button
+            onClick={clearActivePlan}
+            className="text-sm text-gray-600 hover:text-gray-800 underline"
+          >
+            Clear Active Plan
+          </button>
+        )}
       </div>
 
       <div className="space-y-4">
         {plans.map((plan) => (
-          <div key={plan.id} className="border border-gray-200 rounded-lg">
+          <div
+            key={plan.id}
+            className={`border rounded-lg ${
+              selectedPlanId === plan.id
+                ? "border-green-300 bg-green-50"
+                : "border-gray-200"
+            }`}
+          >
             {/* Plan Header */}
             <div className="p-3 sm:p-4 border-b border-gray-100 bg-gray-50">
               <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
@@ -169,6 +255,9 @@ export default function SavedPlans() {
                   <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-start sm:items-center">
                     <Calendar className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5 sm:mt-0" />
                     <span className="break-words">{plan.title}</span>
+                    {selectedPlanId === plan.id && (
+                      <CheckCircle className="w-4 h-4 text-green-600 ml-2 flex-shrink-0" />
+                    )}
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
                     {plan.description}
@@ -185,6 +274,23 @@ export default function SavedPlans() {
                 </div>
 
                 <div className="flex items-center justify-between sm:justify-end space-x-2">
+                  {selectedPlanId !== plan.id && (
+                    <button
+                      onClick={() => selectPlan(plan.id)}
+                      disabled={selectingPlan === plan.id}
+                      className={`flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg transition-colors text-sm ${
+                        selectingPlan === plan.id
+                          ? "bg-blue-300 text-blue-700 cursor-not-allowed"
+                          : "bg-blue-500 text-white hover:bg-blue-600"
+                      }`}
+                    >
+                      <Play className="w-4 h-4" />
+                      <span className="hidden sm:inline">
+                        {selectingPlan === plan.id ? "Selecting..." : "Select"}
+                      </span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() =>
                       setExpandedPlan(expandedPlan === plan.id ? null : plan.id)

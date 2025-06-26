@@ -18,6 +18,24 @@ interface TrainingSession {
   };
 }
 
+interface SavedTrainingSession {
+  day: string;
+  type: "easy" | "tempo" | "long" | "interval" | "race" | "rest";
+  duration: string;
+  distance?: string;
+  description: string;
+}
+
+interface SavedTrainingPlan {
+  id: string;
+  title: string;
+  description: string;
+  duration: string;
+  sessions: SavedTrainingSession[];
+  created_at: string;
+  user_id?: string;
+}
+
 async function fetchStravaActivities(accessToken: string) {
   try {
     const response = await fetch(
@@ -181,13 +199,118 @@ function matchActivitiesToPlan(
   });
 }
 
+function convertSavedPlanToWeeklyPlan(
+  savedPlan: SavedTrainingPlan
+): TrainingSession[] {
+  const weekDates = getWeekDates();
+  const days = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
+
+  // Map saved plan sessions to weekly format
+  const mappedSessions = savedPlan.sessions.map((session, index) => ({
+    id: (index + 1).toString(),
+    day: days[index] || session.day,
+    date:
+      weekDates[index]?.toLocaleDateString("en", {
+        month: "short",
+        day: "numeric",
+      }) || "",
+    type: session.type,
+    duration: session.duration,
+    distance: session.distance,
+    description: session.description,
+    completed: false,
+  }));
+
+  // If saved plan has fewer than 7 sessions, fill with rest days
+  while (mappedSessions.length < 7) {
+    const index = mappedSessions.length;
+    mappedSessions.push({
+      id: (index + 1).toString(),
+      day: days[index],
+      date:
+        weekDates[index]?.toLocaleDateString("en", {
+          month: "short",
+          day: "numeric",
+        }) || "",
+      type: "rest" as const,
+      duration: "Rest",
+      distance: undefined,
+      description: "Rest day or light stretching",
+      completed: false,
+    });
+  }
+
+  return mappedSessions.slice(0, 7); // Ensure exactly 7 days
+}
+
+async function getSelectedTrainingPlan(): Promise<SavedTrainingPlan | null> {
+  try {
+    const cookieStore = await cookies();
+    const selectedPlanId = cookieStore.get("active_training_plan")?.value;
+
+    if (!selectedPlanId) {
+      return null;
+    }
+
+    // Fetch the saved plan from the training-plans API
+    const response = await fetch(
+      `${
+        process.env.NEXTAUTH_URL || "http://localhost:3000"
+      }/api/training-plans?id=${selectedPlanId}`,
+      {
+        headers: {
+          Cookie: cookieStore.toString(),
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.plan || null;
+  } catch (error) {
+    console.error("Error fetching selected training plan:", error);
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("strava_access_token")?.value;
 
-    // Generate base training plan
-    let trainingPlan = generateTrainingPlan();
+    // Check if there's a selected training plan
+    const selectedPlan = await getSelectedTrainingPlan();
+
+    let trainingPlan: TrainingSession[];
+    let planInfo = {
+      planType: "Half Marathon Training",
+      weekNumber: 8,
+      totalWeeks: 12,
+    };
+
+    if (selectedPlan) {
+      // Use the selected saved plan
+      trainingPlan = convertSavedPlanToWeeklyPlan(selectedPlan);
+      planInfo = {
+        planType: selectedPlan.title,
+        weekNumber: 1, // Could be calculated based on start date
+        totalWeeks: parseInt(selectedPlan.duration.match(/\d+/)?.[0] || "12"),
+      };
+    } else {
+      // Generate default training plan
+      trainingPlan = generateTrainingPlan();
+    }
 
     if (accessToken) {
       try {
@@ -213,11 +336,16 @@ export async function GET(request: NextRequest) {
         completedSessions,
         totalSessions: trainingPlan.length,
         progressPercentage: Math.round(progressPercentage),
-        weekNumber: 8, // Could be calculated based on training start date
-        totalWeeks: 12,
-        planType: "Half Marathon Training",
+        ...planInfo,
       },
       connected: !!accessToken,
+      selectedPlan: selectedPlan
+        ? {
+            id: selectedPlan.id,
+            title: selectedPlan.title,
+            description: selectedPlan.description,
+          }
+        : null,
     });
   } catch (error) {
     console.error("Error generating training plan:", error);
@@ -226,6 +354,64 @@ export async function GET(request: NextRequest) {
         error: "Failed to generate training plan",
         message: "There was an error generating your training plan",
       },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { planId } = body;
+
+    if (!planId) {
+      return NextResponse.json(
+        { error: "Plan ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Set the active training plan in cookies
+    const cookieStore = await cookies();
+
+    // Create response and set cookie
+    const response = NextResponse.json({
+      success: true,
+      message: "Training plan selected successfully",
+    });
+
+    response.cookies.set("active_training_plan", planId, {
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Error setting active training plan:", error);
+    return NextResponse.json(
+      { error: "Failed to set active training plan" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // Clear the active training plan
+    const response = NextResponse.json({
+      success: true,
+      message: "Training plan cleared successfully",
+    });
+
+    response.cookies.delete("active_training_plan");
+
+    return response;
+  } catch (error) {
+    console.error("Error clearing active training plan:", error);
+    return NextResponse.json(
+      { error: "Failed to clear active training plan" },
       { status: 500 }
     );
   }

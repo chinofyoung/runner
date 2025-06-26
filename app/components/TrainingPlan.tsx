@@ -8,6 +8,7 @@ import {
   TrendingUp,
   Play,
   MoreVertical,
+  X,
 } from "lucide-react";
 
 interface TrainingSession {
@@ -38,6 +39,15 @@ interface TrainingPlanData {
     planType: string;
   };
   connected: boolean;
+  selectedPlan?: {
+    id: string;
+    title: string;
+    description: string;
+  } | null;
+}
+
+interface TrainingPlanProps {
+  refreshTrigger?: number;
 }
 
 const getTypeColor = (type: string) => {
@@ -74,34 +84,51 @@ const getTypeIcon = (type: string) => {
   }
 };
 
-export default function TrainingPlan() {
+export default function TrainingPlan({
+  refreshTrigger,
+}: TrainingPlanProps = {}) {
   const [trainingData, setTrainingData] = useState<TrainingPlanData | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchTrainingPlan = async () => {
-      try {
-        const response = await fetch("/api/strava/training-plan");
+  const fetchTrainingPlan = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/strava/training-plan");
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch training plan");
-        }
-
-        const data = await response.json();
-        setTrainingData(data);
-      } catch (err) {
-        console.error("Error fetching training plan:", err);
-        setError("Failed to load training plan");
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error("Failed to fetch training plan");
       }
-    };
 
+      const data = await response.json();
+      setTrainingData(data);
+    } catch (err) {
+      console.error("Error fetching training plan:", err);
+      setError("Failed to load training plan");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchTrainingPlan();
-  }, []);
+  }, [refreshTrigger]);
+
+  const clearActivePlan = async () => {
+    try {
+      const response = await fetch("/api/strava/training-plan", {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        fetchTrainingPlan(); // Refresh the data
+      }
+    } catch (error) {
+      console.error("Error clearing active plan:", error);
+    }
+  };
 
   if (loading) {
     return (
@@ -138,7 +165,7 @@ export default function TrainingPlan() {
     );
   }
 
-  const { trainingPlan, summary } = trainingData;
+  const { trainingPlan, summary, selectedPlan } = trainingData;
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
@@ -162,6 +189,29 @@ export default function TrainingPlan() {
           </div>
         </div>
       </div>
+
+      {/* Selected Plan Indicator */}
+      {selectedPlan && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium text-green-800">
+                📋 Using Saved Plan: {selectedPlan.title}
+              </h4>
+              <p className="text-sm text-green-700">
+                {selectedPlan.description}
+              </p>
+            </div>
+            <button
+              onClick={clearActivePlan}
+              className="text-green-600 hover:text-green-800 transition-colors"
+              title="Clear active plan"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Progress Bar */}
       <div className="mb-6">
@@ -325,6 +375,8 @@ export default function TrainingPlan() {
                       ? "You're on track for a strong week!"
                       : "Keep pushing to reach your weekly goals!"
                   }`
+                : selectedPlan
+                ? `Your "${selectedPlan.title}" training plan is active! Start with today's session to build momentum for the week.`
                 : "Your training plan is ready! Start with today's session to build momentum for the week."}
             </p>
           </div>

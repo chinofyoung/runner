@@ -4,8 +4,6 @@ import {
   BarChart3,
   Settings,
   Search,
-  Bell,
-  User,
   Calendar,
   MoreVertical,
   ChevronRight,
@@ -105,13 +103,6 @@ const generateTrackingData = (stravaData: StravaData | null) => {
         pace: 3.0,
         distance: 8.1,
         date: "Dec 29",
-      },
-      {
-        activityName: "Interval Run",
-        speed: 24,
-        pace: 2.5,
-        distance: 6.8,
-        date: "Dec 31",
       },
       {
         activityName: "Weekend Long",
@@ -215,6 +206,7 @@ export default function Home() {
   } | null>(null);
   const [showAIPopup, setShowAIPopup] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [trainingPlanRefresh, setTrainingPlanRefresh] = useState(0);
 
   // Mini chat state
   const [miniChatMessages, setMiniChatMessages] = useState<
@@ -503,9 +495,9 @@ export default function Home() {
           <div className="flex items-center space-x-4 sm:space-x-8">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">F</span>
+                <span className="text-white font-bold text-lg">Cb</span>
               </div>
-              <span className="font-bold text-xl text-gray-800">Fitflex</span>
+              <span className="font-bold text-xl text-gray-800">ChinoBot</span>
             </div>
 
             {/* Desktop Navigation */}
@@ -575,14 +567,6 @@ export default function Home() {
             >
               <MessageCircle className="w-6 h-6" />
             </button>
-
-            <button className="relative p-2 text-gray-500 hover:text-gray-700">
-              <Bell className="w-6 h-6" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-            </button>
-            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-white" />
-            </div>
 
             {/* Mobile Menu Button */}
             <button
@@ -677,7 +661,7 @@ export default function Home() {
           <div>
             <div className="mb-6 sm:mb-8">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                Welcome back, Runner! 🏃‍♂️
+                Welcome back, Chino! 🏃‍♂️
               </h1>
               <p className="text-gray-600">
                 Here's your training overview and today's insights
@@ -804,10 +788,6 @@ export default function Home() {
                           : "Your recent running pace progression and speed analysis"}
                       </p>
                     </div>
-                    <div className="flex items-center space-x-2 text-gray-500">
-                      <span>Speed (km/h)</span>
-                      <Activity className="w-5 h-5" />
-                    </div>
                   </div>
 
                   <div className="h-48 sm:h-64 mb-4">
@@ -875,18 +855,6 @@ export default function Home() {
                         />
                       </BarChart>
                     </ResponsiveContainer>
-                  </div>
-
-                  <div className="flex items-center justify-center">
-                    <div className="bg-black text-white px-4 py-2 rounded-full">
-                      <span className="text-2xl font-bold">
-                        {stravaData?.summary.avgPace
-                          ? Math.round((60 / stravaData.summary.avgPace) * 10) /
-                            10
-                          : "12.5"}
-                      </span>
-                      <span className="text-sm ml-1">km/h</span>
-                    </div>
                   </div>
                 </div>
 
@@ -1356,11 +1324,15 @@ export default function Home() {
                 </div>
 
                 {/* Saved Training Plans */}
-                <SavedPlans />
+                <SavedPlans
+                  onPlanSelected={() => {
+                    setTrainingPlanRefresh((prev) => prev + 1);
+                  }}
+                />
               </div>
 
               <div>
-                <TrainingPlan />
+                <TrainingPlan refreshTrigger={trainingPlanRefresh} />
               </div>
             </div>
           </div>
@@ -1689,7 +1661,9 @@ export default function Home() {
                   <div className="space-y-3">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-gray-500" />
+                        <span className="text-gray-500 font-medium text-sm">
+                          DU
+                        </span>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-800">

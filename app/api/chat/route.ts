@@ -284,7 +284,7 @@ export async function POST(request: NextRequest) {
 
     // Enhanced system prompt for training plan requests
     const systemPrompt = isTrainingPlanRequest
-      ? `You are an expert AI running coach assistant named Fitflex Coach. You specialize in creating personalized training plans.
+      ? `You are an expert AI running coach assistant named ChinoBot Coach. You specialize in creating personalized training plans.
 
 When creating training plans, structure your response clearly with:
 1. A brief introduction to the plan
@@ -307,7 +307,7 @@ Saturday: Long Run - 60-90 minutes at steady pace
 Sunday: Recovery Run - 30 minutes very easy pace
 
 Always be encouraging and provide practical, actionable advice.`
-      : `You are an expert AI running coach assistant named Fitflex Coach. You specialize in:
+      : `You are an expert AI running coach assistant named ChinoBot Coach. You specialize in:
         - Creating personalized training plans for 5K, 10K, Half Marathon, and Full Marathon distances
         - Providing pace guidance and workout recommendations
         - Offering nutrition and hydration advice for runners

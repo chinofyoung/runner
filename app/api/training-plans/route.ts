@@ -82,16 +82,36 @@ const supabaseRequest = async (
   return response.json();
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const planId = searchParams.get("id");
     const userId = getCurrentUserId();
 
-    const plans = await supabaseRequest("GET", "training_plans", null, {
-      user_id: `eq.${userId}`,
-      order: "created_at.desc",
-    });
+    if (planId) {
+      // Fetch specific plan by ID
+      const plan = await supabaseRequest("GET", "training_plans", null, {
+        id: `eq.${planId}`,
+        user_id: `eq.${userId}`,
+      });
 
-    return NextResponse.json({ plans: plans || [] });
+      if (!plan || plan.length === 0) {
+        return NextResponse.json(
+          { error: "Training plan not found" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({ plan: plan[0] });
+    } else {
+      // Fetch all plans for the user
+      const plans = await supabaseRequest("GET", "training_plans", null, {
+        user_id: `eq.${userId}`,
+        order: "created_at.desc",
+      });
+
+      return NextResponse.json({ plans: plans || [] });
+    }
   } catch (error) {
     console.error("Error fetching saved plans:", error);
     return NextResponse.json(

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fitflex - Your AI Running Coach",
+  title: "ChinoBot - Your AI Running Coach",
   description:
     "AI-powered running assistant for personalized training plans and coaching",
 };

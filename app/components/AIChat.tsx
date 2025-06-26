@@ -223,7 +223,7 @@ export default function AIChat() {
           </div>
           <div>
             <h3 className="font-semibold text-gray-800 text-sm sm:text-base">
-              Fitflex AI Coach
+              ChinoBot AI Coach
             </h3>
             <p className="text-xs sm:text-sm text-green-500">
               Powered by Claude • Online

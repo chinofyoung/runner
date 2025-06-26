@@ -1,4 +1,4 @@
-# 🏃‍♂️ Fitflex - AI-Powered Running Assistant
+# 🏃‍♂️ ChinoBot - AI-Powered Running Assistant
 
 A beautiful, modern web application that serves as your personal AI running coach, helping you achieve your running goals with personalized training plans, real-time guidance, and comprehensive progress tracking.
 
@@ -124,7 +124,7 @@ Communication hub with AI coach chat and friend messaging capabilities.
 
 ## 🎨 Design Philosophy
 
-**Fitflex** follows a clean, modern design inspired by fitness tracking applications with:
+**ChinoBot** follows a clean, modern design inspired by fitness tracking applications with:
 
 - **Green Color Scheme**: Representing health, growth, and energy
 - **Card-Based Layout**: Organized information in digestible sections
@@ -153,7 +153,7 @@ Communication hub with AI coach chat and friend messaging capabilities.
 
 This application implements all core features outlined in the original requirements:
 
-✅ **User Interface**: Modern, responsive design matching the Fitflex aesthetic  
+✅ **User Interface**: Modern, responsive design matching the ChinoBot aesthetic  
 ✅ **Training Plans**: AI-generated weekly schedules with progress tracking  
 ✅ **Activity Logging**: Comprehensive run tracking and history  
 ✅ **Progress Analytics**: Visual charts and performance metrics  
@@ -181,4 +181,4 @@ For questions, feature requests, or support:
 
 **Built with ❤️ for the running community**
 
-_Fitflex - Your AI Running Coach: Train Smarter, Run Faster, Achieve More_
+_ChinoBot - Your AI Running Coach: Train Smarter, Run Faster, Achieve More_
