@@ -429,10 +429,10 @@ export default function Dashboard() {
     if (!isEditMode) return null;
 
     return (
-      <div className="absolute top-2 right-2 flex items-center space-x-1 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
+      <div className="absolute top-2 right-2 flex items-center space-x-1 bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-1">
         {/* Drag Handle */}
         <div
-          className="w-6 h-6 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300 transition-colors cursor-move flex items-center justify-center"
+          className="w-6 h-6 rounded text-xs font-medium bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors cursor-move flex items-center justify-center"
           title="Drag to reorder"
         >
           ⋮⋮
@@ -445,7 +445,7 @@ export default function Dashboard() {
           className={`w-6 h-6 rounded text-xs font-medium transition-colors ${
             currentSize === "small"
               ? "bg-green-500 text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
           title="1/3 width"
         >
@@ -459,7 +459,7 @@ export default function Dashboard() {
           className={`w-6 h-6 rounded text-xs font-medium transition-colors ${
             currentSize === "medium"
               ? "bg-green-500 text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
           title="1/2 width"
         >
@@ -473,7 +473,7 @@ export default function Dashboard() {
           className={`w-6 h-6 rounded text-xs font-medium transition-colors ${
             currentSize === "large"
               ? "bg-green-500 text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
           title="Full width"
         >
@@ -582,7 +582,7 @@ export default function Dashboard() {
       // Apply minimum height only for content-heavy widgets
       const minHeight =
         widgetId === "metrics" ? "min-h-[100px]" : "min-h-[120px]";
-      return `bg-white rounded-xl shadow-sm p-4 ${minHeight} ${baseClasses} ${editModeClasses} ${dragClasses}`;
+      return `bg-gray-800 rounded-2xl shadow-sm p-4 border border-gray-700 ${minHeight} ${baseClasses} ${editModeClasses} ${dragClasses}`;
     };
 
     const getWidgetProps = (widgetId: string) => ({
@@ -610,18 +610,18 @@ export default function Dashboard() {
               currentSize={widgetSizes[widgetId]}
             />
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-800">
+              <h2 className="text-lg font-semibold text-gray-300">
                 Today's Activity
               </h2>
               <Calendar className="w-5 h-5 text-gray-400" />
             </div>
             {todaysActivity ? (
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold">🏃</span>
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800">
+                  <h3 className="font-semibold text-gray-300">
                     {todaysActivity.name}
                   </h3>
                   <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
@@ -641,10 +641,10 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="text-center py-3">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
                   <span className="text-xl">🏃‍♂️</span>
                 </div>
-                <h3 className="text-base font-medium text-gray-800 mb-2">
+                <h3 className="text-base font-medium text-gray-300 mb-2">
                   No activity today yet
                 </h3>
                 <p className="text-sm text-gray-600 mb-3">
@@ -666,7 +666,7 @@ export default function Dashboard() {
               currentSize={widgetSizes[widgetId]}
             />
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-800">
+              <h2 className="text-lg font-semibold text-gray-300">
                 Key Metrics
               </h2>
               <MoreVertical className="w-5 h-5 text-gray-400" />
@@ -676,7 +676,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-center mb-2">
                   <Flame className="w-5 h-5 text-orange-500" />
                 </div>
-                <div className="text-xl font-bold text-gray-800">
+                <div className="text-xl font-bold text-gray-300">
                   {stravaData?.summary.totalCalories || 520}
                 </div>
                 <div className="text-xs text-gray-500">kcal</div>
@@ -685,7 +685,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-center mb-2">
                   <Heart className="w-5 h-5 text-red-500" />
                 </div>
-                <div className="text-xl font-bold text-gray-800">
+                <div className="text-xl font-bold text-gray-300">
                   {stravaData?.summary.avgHeartrate || 102}
                 </div>
                 <div className="text-xs text-gray-500">bpm</div>
@@ -694,7 +694,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-center mb-2">
                   <Footprints className="w-5 h-5 text-purple-500" />
                 </div>
-                <div className="text-xl font-bold text-gray-800">
+                <div className="text-xl font-bold text-gray-300">
                   {Math.round((stravaData?.summary.totalDistance || 67) * 1300)}
                 </div>
                 <div className="text-xs text-gray-500">steps</div>
@@ -747,7 +747,7 @@ export default function Dashboard() {
               currentSize={widgetSizes[widgetId]}
             />
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-800">
+              <h2 className="text-lg font-semibold text-gray-300">
                 Training Schedule
               </h2>
               <Calendar className="w-5 h-5 text-gray-400" />
@@ -756,16 +756,16 @@ export default function Dashboard() {
             {trainingPlanLoading ? (
               <div className="space-y-3">
                 <div className="animate-pulse">
-                  <div className="h-16 bg-gray-200 rounded-lg mb-2"></div>
-                  <div className="h-16 bg-gray-200 rounded-lg"></div>
+                  <div className="h-16 bg-gray-700 rounded-lg mb-2"></div>
+                  <div className="h-16 bg-gray-700 rounded-lg"></div>
                 </div>
               </div>
             ) : (
               <div className="space-y-3">
                 {/* Today's Training */}
-                <div className="border rounded-lg p-3">
+                <div className="border border-gray-700 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-800 text-sm">
+                    <h3 className="font-semibold text-gray-300 text-sm">
                       Today
                     </h3>
                     <span className="text-xs text-gray-500">
@@ -815,9 +815,9 @@ export default function Dashboard() {
                 </div>
 
                 {/* Tomorrow's Training */}
-                <div className="border rounded-lg p-3">
+                <div className="border border-gray-700 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-800 text-sm">
+                    <h3 className="font-semibold text-gray-300 text-sm">
                       Tomorrow
                     </h3>
                     <span className="text-xs text-gray-500">
@@ -878,10 +878,10 @@ export default function Dashboard() {
             />
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
-                <h2 className="text-lg font-semibold text-gray-800">
+                <h2 className="text-lg font-semibold text-gray-300">
                   AI Fitness Analysis
                 </h2>
-                <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-xs font-bold">AI</span>
                 </div>
               </div>
@@ -918,14 +918,14 @@ export default function Dashboard() {
 
             {aiSummaryLoading ? (
               <div className="animate-pulse space-y-3">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+                <div className="h-4 bg-gray-700 rounded w-5/6"></div>
+                <div className="h-4 bg-gray-700 rounded w-2/3"></div>
                 <div className="space-y-2 mt-4">
-                  <div className="h-3 bg-gray-200 rounded w-full"></div>
-                  <div className="h-3 bg-gray-200 rounded w-4/5"></div>
-                  <div className="h-3 bg-gray-200 rounded w-3/5"></div>
+                  <div className="h-3 bg-gray-700 rounded w-full"></div>
+                  <div className="h-3 bg-gray-700 rounded w-4/5"></div>
+                  <div className="h-3 bg-gray-700 rounded w-3/5"></div>
                 </div>
               </div>
             ) : aiSummaryError ? (
@@ -933,7 +933,7 @@ export default function Dashboard() {
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <span className="text-red-500 text-xl">⚠️</span>
                 </div>
-                <h3 className="text-base font-medium text-gray-800 mb-2">
+                <h3 className="text-base font-medium text-gray-300 mb-2">
                   Analysis Unavailable
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">{aiSummaryError}</p>
@@ -948,7 +948,7 @@ export default function Dashboard() {
               <div className="space-y-4">
                 <div className="prose prose-sm max-w-none">
                   <div
-                    className="text-gray-700 leading-relaxed whitespace-pre-wrap text-sm"
+                    className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm"
                     dangerouslySetInnerHTML={{
                       __html: aiSummaryData.summary
                         .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
@@ -962,7 +962,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Summary Stats */}
-                <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
                   <div className="grid grid-cols-2 gap-4 text-center">
                     <div>
                       <div className="text-lg font-bold text-blue-600">
@@ -989,7 +989,7 @@ export default function Dashboard() {
 
                 {/* Powered by AI notice */}
                 <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 mt-3">
-                  <div className="w-4 h-4 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full flex items-center justify-center">
+                  <div className="w-4 h-4 bg-purple-400 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✨</span>
                   </div>
                   <span>Powered by AI analysis of your Strava data</span>
@@ -997,10 +997,10 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="text-center py-6">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
                   <span className="text-xl">🤖</span>
                 </div>
-                <h3 className="text-base font-medium text-gray-800 mb-2">
+                <h3 className="text-base font-medium text-gray-300 mb-2">
                   No Analysis Available
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
@@ -1026,7 +1026,7 @@ export default function Dashboard() {
             />
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">
+                <h2 className="text-lg font-semibold text-gray-300">
                   Recent Pace Trends
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
@@ -1061,8 +1061,8 @@ export default function Dashboard() {
                       if (active && payload && payload.length > 0) {
                         const data = payload[0].payload;
                         return (
-                          <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                            <p className="font-semibold text-gray-800 mb-2">
+                          <div className="bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-700">
+                            <p className="font-semibold text-gray-300 mb-2">
                               {data.fullName || data.activityName}
                             </p>
                             <div className="space-y-1 text-sm">
@@ -1108,7 +1108,7 @@ export default function Dashboard() {
             key={widgetId}
             {...getWidgetProps(widgetId)}
             className={`${getWidgetClasses(widgetId)} ${
-              isEditMode ? "rounded-xl" : ""
+              isEditMode ? "rounded-2xl" : ""
             }`}
           >
             <WidgetResizeControls
@@ -1128,7 +1128,7 @@ export default function Dashboard() {
             />
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="font-semibold text-gray-800">Recent Runs</h3>
+                <h3 className="font-semibold text-gray-300">Recent Runs</h3>
                 <p className="text-xs text-gray-500">
                   {stravaConnected
                     ? "Your latest activities"
@@ -1148,14 +1148,14 @@ export default function Dashboard() {
                 {stravaData.recentActivities.slice(0, 4).map((run) => (
                   <div
                     key={run.id}
-                    className="group p-3 rounded-lg border border-gray-100 hover:border-green-200 hover:bg-green-50 transition-all cursor-pointer"
+                    className="group p-3 rounded-lg border border-gray-700 hover:border-green-400 hover:bg-gray-700/50 transition-all cursor-pointer"
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
                         <span className="text-white text-xs">🏃</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-800 text-sm truncate group-hover:text-green-800 transition-colors">
+                        <h4 className="font-medium text-gray-300 text-sm truncate group-hover:text-green-200 transition-colors">
                           {run.name}
                         </h4>
                         <p className="text-xs text-gray-500 mb-1">{run.date}</p>
@@ -1176,7 +1176,7 @@ export default function Dashboard() {
                 <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
                   <span className="text-base">🏃‍♂️</span>
                 </div>
-                <h4 className="text-sm font-medium text-gray-800 mb-1">
+                <h4 className="text-sm font-medium text-gray-300 mb-1">
                   Connect Strava
                 </h4>
                 <p className="text-xs text-gray-600 mb-2">
@@ -1191,10 +1191,10 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="text-center py-4">
-                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
                   <span className="text-base">🏃‍♂️</span>
                 </div>
-                <h4 className="text-sm font-medium text-gray-800 mb-1">
+                <h4 className="text-sm font-medium text-gray-300 mb-1">
                   No Recent Runs
                 </h4>
                 <p className="text-xs text-gray-600">
@@ -1214,7 +1214,7 @@ export default function Dashboard() {
             />
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="font-semibold text-gray-800">
+                <h3 className="font-semibold text-gray-300">
                   Zone 2 / Easy Runs
                 </h3>
                 <p className="text-xs text-gray-500">
@@ -1426,44 +1426,44 @@ export default function Dashboard() {
   const todaysActivity = getTodaysActivity();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-900">
       {/* Navigation Header */}
-      <header className="bg-white shadow-sm border-b border-gray-100 px-4 sm:px-6 py-4">
+      <header className="bg-gray-800 shadow-sm border-b border-gray-700 px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-4 sm:space-x-8">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">Cb</span>
               </div>
-              <span className="font-bold text-xl text-gray-800">ChinoBot</span>
+              <span className="font-bold text-xl text-white">ChinoBot</span>
             </div>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex space-x-6">
               <button
                 onClick={() => router.push("/dashboard")}
-                className="flex items-center space-x-2 font-medium text-green-500"
+                className="flex items-center space-x-2 font-medium text-green-400"
               >
                 <Activity className="w-5 h-5" />
                 <span>Dashboard</span>
               </button>
               <button
                 onClick={() => router.push("/progress")}
-                className="flex items-center space-x-2 font-medium text-gray-500 hover:text-gray-700"
+                className="flex items-center space-x-2 font-medium text-gray-400 hover:text-gray-200"
               >
                 <BarChart3 className="w-5 h-5" />
                 <span>Progress</span>
               </button>
               <button
                 onClick={() => router.push("/chat")}
-                className="flex items-center space-x-2 font-medium text-gray-500 hover:text-gray-700"
+                className="flex items-center space-x-2 font-medium text-gray-400 hover:text-gray-200"
               >
                 <MessageSquare className="w-5 h-5" />
                 <span>AI Coach</span>
               </button>
               <button
                 onClick={() => router.push("/settings")}
-                className="flex items-center space-x-2 font-medium text-gray-500 hover:text-gray-700"
+                className="flex items-center space-x-2 font-medium text-gray-400 hover:text-gray-200"
               >
                 <Settings className="w-5 h-5" />
                 <span>Settings</span>
@@ -1478,14 +1478,14 @@ export default function Dashboard() {
               <input
                 type="text"
                 placeholder="Search here..."
-                className="pl-10 pr-4 py-2 bg-gray-100 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-green-500 w-48 lg:w-64 text-gray-900 placeholder-gray-500"
+                className="pl-10 pr-4 py-2 bg-gray-700 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-green-500 w-48 lg:w-64 text-white placeholder-gray-400"
               />
             </div>
 
             {/* AI Chat Button (Mobile) */}
             <button
               onClick={() => setShowAIPopup(true)}
-              className="md:hidden p-2 text-green-500 hover:text-green-600 bg-green-50 rounded-lg"
+              className="md:hidden p-2 text-green-400 hover:text-green-300 bg-gray-700 rounded-lg"
             >
               <MessageCircle className="w-6 h-6" />
             </button>
@@ -1501,7 +1501,7 @@ export default function Dashboard() {
             <div className="text-center space-y-6">
               {/* Animated Logo */}
               <div className="relative mx-auto w-24 h-24">
-                <div className="absolute inset-0 w-24 h-24 border-4 border-green-200 rounded-full"></div>
+                <div className="absolute inset-0 w-24 h-24 border-4 border-gray-600 rounded-full"></div>
                 <div className="absolute inset-0 w-24 h-24 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
                 <div className="absolute inset-3 w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
                   <span className="text-white font-bold text-2xl">Cb</span>
@@ -1510,10 +1510,10 @@ export default function Dashboard() {
 
               {/* Loading Text */}
               <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-2xl font-bold text-white">
                   Loading Dashboard
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-400">
                   Fetching your training data and insights...
                 </p>
               </div>
@@ -1532,23 +1532,23 @@ export default function Dashboard() {
               </div>
 
               {/* Loading Status */}
-              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm max-w-md mx-auto">
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-sm max-w-md mx-auto">
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-300">
                       Loading Strava activities...
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-300">
                       Generating AI insights...
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-300">
                       Preparing your dashboard...
                     </span>
                   </div>
@@ -1561,10 +1561,10 @@ export default function Dashboard() {
           <div className="animate-in fade-in duration-500">
             <div className="mb-6 sm:mb-8 flex items-center justify-between">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
                   Welcome back, Chino! 🏃‍♂️
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-gray-400">
                   Here's your training overview and today's insights
                 </p>
               </div>
@@ -1575,13 +1575,13 @@ export default function Dashboard() {
                   <>
                     <button
                       onClick={resetLayout}
-                      className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                      className="px-4 py-2 text-gray-300 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
                     >
                       Reset
                     </button>
                     <button
                       onClick={() => setIsEditMode(false)}
-                      className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                      className="px-4 py-2 text-gray-300 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
                     >
                       Cancel
                     </button>
@@ -1631,16 +1631,16 @@ export default function Dashboard() {
 
             {/* Strava Connection Notice */}
             {!stravaConnected && (
-              <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 mb-8">
+              <div className="bg-orange-900/50 border border-orange-600 rounded-xl p-6 mb-8">
                 <div className="flex items-start space-x-4">
                   <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
                     <span className="text-white font-bold text-lg">S</span>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-orange-800 mb-2">
+                    <h3 className="text-lg font-semibold text-orange-200 mb-2">
                       Connect to Strava for Real Data
                     </h3>
-                    <p className="text-orange-700 mb-4">
+                    <p className="text-orange-300 mb-4">
                       Connect your Strava account to see your actual running
                       activities, progress, and performance metrics instead of
                       placeholder data.
@@ -1658,14 +1658,14 @@ export default function Dashboard() {
 
             {/* Edit Mode Notice */}
             {isEditMode && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="mb-6 p-4 bg-blue-900/50 border border-blue-600 rounded-lg">
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span className="text-blue-800 font-medium">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                  <span className="text-blue-200 font-medium">
                     Edit Mode Active
                   </span>
                 </div>
-                <p className="text-blue-700 text-sm mt-1">
+                <p className="text-blue-300 text-sm mt-1">
                   Drag widgets using the ⋮⋮ handle to reorder them, or use S/M/L
                   buttons to resize. Click Save Layout when done.
                 </p>
@@ -1700,14 +1700,14 @@ export default function Dashboard() {
 
       {/* AI Coach Popup */}
       {showAIPopup && (
-        <div className="fixed bottom-4 sm:bottom-24 right-4 sm:right-6 w-full max-w-sm sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 animate-slide-in-from-bottom mx-4 sm:mx-0">
-          <div className="p-4 border-b border-gray-100">
+        <div className="fixed bottom-4 sm:bottom-24 right-4 sm:right-6 w-full max-w-sm sm:w-96 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 z-50 animate-slide-in-from-bottom mx-4 sm:mx-0">
+          <div className="p-4 border-b border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
-                <h3 className="font-semibold text-gray-800">AI Coach</h3>
+                <h3 className="font-semibold text-white">AI Coach</h3>
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -1715,13 +1715,13 @@ export default function Dashboard() {
                     setShowAIPopup(false);
                     router.push("/chat");
                   }}
-                  className="text-green-500 text-xs font-medium hover:underline"
+                  className="text-green-400 text-xs font-medium hover:underline"
                 >
                   Full Chat →
                 </button>
                 <button
                   onClick={() => setShowAIPopup(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-200 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1742,7 +1742,7 @@ export default function Dashboard() {
                   className={`max-w-[75%] p-3 rounded-lg text-sm ${
                     message.sender === "user"
                       ? "bg-green-500 text-white"
-                      : "bg-gray-100 text-gray-800"
+                      : "bg-gray-700 text-gray-200"
                   }`}
                 >
                   {message.content}
@@ -1752,7 +1752,7 @@ export default function Dashboard() {
 
             {miniChatLoading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 text-gray-800 rounded-lg p-3 max-w-[75%]">
+                <div className="bg-gray-700 text-gray-200 rounded-lg p-3 max-w-[75%]">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                     <div
@@ -1773,7 +1773,7 @@ export default function Dashboard() {
           </div>
 
           {/* Input Area */}
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-700">
             <div className="flex items-center space-x-2">
               <input
                 type="text"
@@ -1785,7 +1785,7 @@ export default function Dashboard() {
                   }
                 }}
                 placeholder="Ask about training..."
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm text-gray-900 placeholder-gray-500"
+                className="flex-1 px-3 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm text-white placeholder-gray-400 bg-gray-700"
                 disabled={miniChatLoading}
               />
               <button
