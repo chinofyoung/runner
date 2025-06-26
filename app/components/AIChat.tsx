@@ -216,42 +216,46 @@ export default function AIChat() {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-gray-100">
+      <div className="p-3 sm:p-4 border-b border-gray-100">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-            <Bot className="w-6 h-6 text-white" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-500 rounded-full flex items-center justify-center">
+            <Bot className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800">Fitflex AI Coach</h3>
-            <p className="text-sm text-green-500">Powered by Claude • Online</p>
+            <h3 className="font-semibold text-gray-800 text-sm sm:text-base">
+              Fitflex AI Coach
+            </h3>
+            <p className="text-xs sm:text-sm text-green-500">
+              Powered by Claude • Online
+            </p>
           </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+      <div className="flex-1 p-3 sm:p-4 space-y-4 overflow-y-auto">
         {messages.map((message) => (
           <div key={message.id}>
             <div
-              className={`flex items-start space-x-3 ${
+              className={`flex items-start space-x-2 sm:space-x-3 ${
                 message.sender === "user"
                   ? "flex-row-reverse space-x-reverse"
                   : ""
               }`}
             >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                   message.sender === "user" ? "bg-green-500" : "bg-gray-200"
                 }`}
               >
                 {message.sender === "user" ? (
-                  <User className="w-4 h-4 text-white" />
+                  <User className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 ) : (
-                  <Bot className="w-4 h-4 text-gray-600" />
+                  <Bot className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600" />
                 )}
               </div>
               <div
-                className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
+                className={`max-w-[80%] sm:max-w-xs lg:max-w-md px-3 sm:px-4 py-2 sm:py-3 rounded-lg ${
                   message.sender === "user"
                     ? "bg-green-500 text-white"
                     : "bg-gray-100 text-gray-800"
@@ -269,15 +273,17 @@ export default function AIChat() {
 
             {/* Training Plan Display */}
             {message.trainingPlan && (
-              <div className="mt-4 ml-11 max-w-4xl">
+              <div className="mt-4 ml-2 sm:ml-11 max-w-full">
                 <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
                   {/* Plan Header */}
-                  <div className="p-4 border-b border-gray-100 bg-green-50">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-green-800 flex items-center">
-                          <Calendar className="w-5 h-5 mr-2" />
-                          {message.trainingPlan.title}
+                  <div className="p-3 sm:p-4 border-b border-gray-100 bg-green-50">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base sm:text-lg font-semibold text-green-800 flex items-center">
+                          <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
+                          <span className="truncate">
+                            {message.trainingPlan.title}
+                          </span>
                         </h3>
                         <p className="text-sm text-green-700 mt-1">
                           {message.trainingPlan.description}
@@ -291,7 +297,7 @@ export default function AIChat() {
                           savePlan(message.id, message.trainingPlan!)
                         }
                         disabled={savedPlans.includes(message.id)}
-                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                        className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm flex-shrink-0 ${
                           savedPlans.includes(message.id)
                             ? "bg-green-500 text-white cursor-not-allowed"
                             : "bg-green-600 text-white hover:bg-green-700"
@@ -305,7 +311,8 @@ export default function AIChat() {
                         ) : (
                           <>
                             <Save className="w-4 h-4" />
-                            <span>Save Plan</span>
+                            <span className="hidden sm:inline">Save Plan</span>
+                            <span className="sm:hidden">Save</span>
                           </>
                         )}
                       </button>
@@ -313,35 +320,35 @@ export default function AIChat() {
                   </div>
 
                   {/* Training Sessions Table */}
-                  <div className="p-4">
+                  <div className="p-3 sm:p-4">
                     <div className="space-y-2">
                       {message.trainingPlan.sessions.map((session, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
+                          className="flex items-center justify-between p-2 sm:p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
                         >
-                          <div className="flex items-center space-x-4">
-                            <div className="text-2xl">
+                          <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                            <div className="text-lg sm:text-2xl flex-shrink-0">
                               {getTypeIcon(session.type)}
                             </div>
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <h4 className="font-medium text-gray-800">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 mb-1">
+                                <h4 className="font-medium text-gray-800 text-sm sm:text-base">
                                   {session.day}
                                 </h4>
                                 <span
                                   className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(
                                     session.type
-                                  )}`}
+                                  )} self-start sm:self-auto`}
                                 >
                                   {session.type.charAt(0).toUpperCase() +
                                     session.type.slice(1)}
                                 </span>
                               </div>
-                              <p className="text-sm text-gray-600 mb-2">
+                              <p className="text-xs sm:text-sm text-gray-600 mb-2">
                                 {session.description}
                               </p>
-                              <div className="flex items-center space-x-4 text-xs text-gray-500">
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-500">
                                 {session.duration !== "Rest" && (
                                   <>
                                     <div className="flex items-center space-x-1">
@@ -370,11 +377,11 @@ export default function AIChat() {
         ))}
 
         {isLoading && (
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-              <Bot className="w-4 h-4 text-gray-600" />
+          <div className="flex items-start space-x-2 sm:space-x-3">
+            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-200 rounded-full flex items-center justify-center">
+              <Bot className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600" />
             </div>
-            <div className="bg-gray-100 px-4 py-3 rounded-lg">
+            <div className="bg-gray-100 px-3 sm:px-4 py-2 sm:py-3 rounded-lg">
               <div className="flex space-x-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                 <div
@@ -393,7 +400,7 @@ export default function AIChat() {
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-gray-100">
+      <div className="p-3 sm:p-4 border-t border-gray-100">
         <div className="flex space-x-2">
           <input
             ref={inputRef}
@@ -404,13 +411,13 @@ export default function AIChat() {
               e.key === "Enter" && !e.shiftKey && handleSendMessage()
             }
             placeholder="Ask about training, pacing, nutrition, recovery..."
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base text-gray-900 placeholder-gray-500"
             disabled={isLoading}
           />
           <button
             onClick={handleSendMessage}
             disabled={isLoading || !inputValue.trim()}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-3 sm:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="w-4 h-4" />
           </button>

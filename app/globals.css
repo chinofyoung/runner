@@ -5,13 +5,6 @@
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -19,8 +12,35 @@
   }
 }
 
+/* Base styles - minimal custom CSS */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Mobile-specific optimizations using CSS where Tailwind can't handle */
+@media (max-width: 640px) {
+  /* Prevent zoom on form inputs (accessibility requirement) */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Custom scrollbar - use CSS for webkit-specific features */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-sm;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
 }

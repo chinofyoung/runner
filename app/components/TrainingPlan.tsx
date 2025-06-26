@@ -105,13 +105,16 @@ export default function TrainingPlan() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
         <div className="animate-pulse">
           <div className="h-6 bg-gray-200 rounded mb-2 w-3/4"></div>
           <div className="h-4 bg-gray-200 rounded mb-6 w-1/2"></div>
           <div className="space-y-3">
             {[...Array(7)].map((_, i) => (
-              <div key={i} className="h-20 bg-gray-200 rounded-lg"></div>
+              <div
+                key={i}
+                className="h-16 sm:h-20 bg-gray-200 rounded-lg"
+              ></div>
             ))}
           </div>
         </div>
@@ -121,7 +124,7 @@ export default function TrainingPlan() {
 
   if (error || !trainingData) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
         <div className="text-center py-8">
           <div className="text-gray-500 mb-2">⚠️</div>
           <h3 className="text-lg font-medium text-gray-800 mb-2">
@@ -138,21 +141,21 @@ export default function TrainingPlan() {
   const { trainingPlan, summary } = trainingData;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
+    <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-2 sm:space-y-0">
         <div>
           <h2 className="text-xl font-semibold text-gray-800">
             This Week's Training Plan
           </h2>
-          <p className="text-gray-500">
+          <p className="text-gray-500 text-sm sm:text-base">
             {summary.planType} - Week {summary.weekNumber} of{" "}
             {summary.totalWeeks}
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="text-right">
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-xl sm:text-2xl font-bold text-green-600">
               {summary.completedSessions}/{summary.totalSessions}
             </div>
             <div className="text-xs text-gray-500">Sessions</div>
@@ -180,9 +183,9 @@ export default function TrainingPlan() {
 
       {/* Strava Connection Notice */}
       {!trainingData.connected && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 sm:p-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
               <span className="text-white font-bold text-sm">S</span>
             </div>
             <div>
@@ -203,7 +206,7 @@ export default function TrainingPlan() {
         {trainingPlan.map((session) => (
           <div
             key={session.id}
-            className={`p-4 rounded-lg border-2 transition-all ${
+            className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
               session.completed
                 ? "border-green-200 bg-green-50"
                 : session.type === "rest"
@@ -212,18 +215,22 @@ export default function TrainingPlan() {
             }`}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="text-2xl">{getTypeIcon(session.type)}</div>
-                <div>
-                  <div className="flex items-center space-x-2 mb-1">
-                    <h3 className="font-medium text-gray-800">{session.day}</h3>
-                    <span className="text-sm text-gray-500">
+              <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                <div className="text-xl sm:text-2xl flex-shrink-0">
+                  {getTypeIcon(session.type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 mb-1">
+                    <h3 className="font-medium text-gray-800 text-sm sm:text-base">
+                      {session.day}
+                    </h3>
+                    <span className="text-xs sm:text-sm text-gray-500">
                       {session.date}
                     </span>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(
                         session.type
-                      )}`}
+                      )} self-start sm:self-auto`}
                     >
                       {session.type.charAt(0).toUpperCase() +
                         session.type.slice(1)}
@@ -236,7 +243,7 @@ export default function TrainingPlan() {
                       <p className="text-sm font-medium text-green-800 mb-1">
                         ✅ Completed: {session.actualActivity.name}
                       </p>
-                      <div className="flex items-center space-x-4 text-xs text-green-700">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-green-700">
                         <div className="flex items-center space-x-1">
                           <MapPin className="w-3 h-3" />
                           <span>{session.actualActivity.distance}km</span>
@@ -258,7 +265,7 @@ export default function TrainingPlan() {
 
                   {/* Show planned session details */}
                   {!session.completed && (
-                    <div className="flex items-center space-x-4 text-xs text-gray-500">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-500">
                       {session.duration !== "Rest" && (
                         <>
                           <div className="flex items-center space-x-1">
@@ -278,7 +285,7 @@ export default function TrainingPlan() {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 flex-shrink-0">
                 {session.completed ? (
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-sm">✓</span>
@@ -302,7 +309,7 @@ export default function TrainingPlan() {
       </div>
 
       {/* AI Coaching Tip */}
-      <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+      <div className="mt-6 p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
         <div className="flex items-start space-x-3">
           <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
             <TrendingUp className="w-4 h-4 text-white" />
