@@ -260,30 +260,7 @@ export default function Dashboard() {
     }
   };
 
-  const getRowSpan = (
-    widgetType: string,
-    size: "small" | "medium" | "large"
-  ) => {
-    // Base row calculations - more conservative to prevent overlaps
-    const baseRows = {
-      todaysActivity: todaysActivity ? 3 : 4,
-      metrics: 3,
-      performanceChart: 6,
-      trainingPlan: 6,
-      recentRuns: 5,
-      zone2: 6,
-    };
-
-    // Adjust based on widget size
-    const sizeMultiplier = {
-      small: 0.8,
-      medium: 1.0,
-      large: 1.2,
-    };
-
-    const baseSpan = baseRows[widgetType as keyof typeof baseRows] || 3;
-    return Math.max(2, Math.ceil(baseSpan * sizeMultiplier[size]));
-  };
+  // Removed getRowSpan function - widgets now auto-size to content height
 
   const updateWidgetSize = (
     widgetId: string,
@@ -497,14 +474,17 @@ export default function Dashboard() {
         return `${baseClasses} ${editModeClasses} ${dragClasses}`;
       }
 
-      return `bg-white rounded-xl shadow-sm p-4 sm:p-6 ${baseClasses} ${editModeClasses} ${dragClasses}`;
+      // Apply minimum height only for content-heavy widgets
+      const minHeight =
+        widgetId === "metrics" ? "min-h-[100px]" : "min-h-[120px]";
+      return `bg-white rounded-xl shadow-sm p-4 ${minHeight} ${baseClasses} ${editModeClasses} ${dragClasses}`;
     };
 
     const getWidgetProps = (widgetId: string) => ({
       className: getWidgetClasses(widgetId),
       style: {
-        gridRowEnd: `span ${getRowSpan(widgetId, widgetSizes[widgetId])}`,
         gridColumnEnd: `span ${getWidgetSpan(widgetSizes[widgetId])}`,
+        // Remove fixed row spans to let content determine height
       },
       draggable: isEditMode,
       onDragStart: (e: React.DragEvent) => handleDragStart(e, widgetId),
@@ -524,8 +504,8 @@ export default function Dashboard() {
               widgetId={widgetId}
               currentSize={widgetSizes[widgetId]}
             />
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-800">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-800">
                 Today's Activity
               </h2>
               <Calendar className="w-5 h-5 text-gray-400" />
@@ -555,17 +535,17 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-4">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🏃‍♂️</span>
+              <div className="text-center py-3">
+                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-xl">🏃‍♂️</span>
                 </div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">
+                <h3 className="text-base font-medium text-gray-800 mb-2">
                   No activity today yet
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-sm text-gray-600 mb-3">
                   Ready to get moving? Your next run is waiting!
                 </p>
-                <button className="bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors">
+                <button className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors">
                   Plan Today's Run
                 </button>
               </div>
@@ -580,13 +560,13 @@ export default function Dashboard() {
               widgetId={widgetId}
               currentSize={widgetSizes[widgetId]}
             />
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-gray-800">
                 Key Metrics
               </h2>
               <MoreVertical className="w-5 h-5 text-gray-400" />
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-3">
               <div className="text-center">
                 <div className="flex items-center justify-center mb-2">
                   <Flame className="w-5 h-5 text-orange-500" />
@@ -625,9 +605,9 @@ export default function Dashboard() {
               widgetId={widgetId}
               currentSize={widgetSizes[widgetId]}
             />
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-gray-800">
+                <h2 className="text-lg font-semibold text-gray-800">
                   Recent Pace Trends
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
@@ -646,7 +626,7 @@ export default function Dashboard() {
                 </span>
               )}
             </div>
-            <div className="h-48 sm:h-64">
+            <div className="h-40 sm:h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={trackingData}>
                   <XAxis
@@ -727,7 +707,7 @@ export default function Dashboard() {
               widgetId={widgetId}
               currentSize={widgetSizes[widgetId]}
             />
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="font-semibold text-gray-800">Recent Runs</h3>
                 <p className="text-xs text-gray-500">
@@ -773,14 +753,14 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : !stravaConnected ? (
-              <div className="text-center py-6">
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-lg">🏃‍♂️</span>
+              <div className="text-center py-4">
+                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <span className="text-base">🏃‍♂️</span>
                 </div>
-                <h4 className="text-sm font-medium text-gray-800 mb-2">
+                <h4 className="text-sm font-medium text-gray-800 mb-1">
                   Connect Strava
                 </h4>
-                <p className="text-xs text-gray-600 mb-3">
+                <p className="text-xs text-gray-600 mb-2">
                   See your recent runs here
                 </p>
                 <button
@@ -791,11 +771,11 @@ export default function Dashboard() {
                 </button>
               </div>
             ) : (
-              <div className="text-center py-6">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-lg">🏃‍♂️</span>
+              <div className="text-center py-4">
+                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <span className="text-base">🏃‍♂️</span>
                 </div>
-                <h4 className="text-sm font-medium text-gray-800 mb-2">
+                <h4 className="text-sm font-medium text-gray-800 mb-1">
                   No Recent Runs
                 </h4>
                 <p className="text-xs text-gray-600">
@@ -813,7 +793,7 @@ export default function Dashboard() {
               widgetId={widgetId}
               currentSize={widgetSizes[widgetId]}
             />
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="font-semibold text-gray-800">
                   Zone 2 / Easy Runs
@@ -1212,7 +1192,7 @@ export default function Dashboard() {
             }`}
             style={{
               gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gridAutoRows: "minmax(120px, auto)",
+              gridAutoRows: "auto",
               gridAutoFlow: "row",
             }}
           >

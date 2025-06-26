@@ -168,39 +168,34 @@ export default function TrainingPlan({
   const { trainingPlan, summary, selectedPlan } = trainingData;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+    <div className="bg-white rounded-xl shadow-sm p-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-2 sm:space-y-0">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">
+          <h2 className="text-lg font-semibold text-gray-800">
             This Week's Training Plan
           </h2>
-          <p className="text-gray-500 text-sm sm:text-base">
+          <p className="text-gray-500 text-sm">
             {summary.planType} - Week {summary.weekNumber} of{" "}
             {summary.totalWeeks}
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="text-right">
-            <div className="text-xl sm:text-2xl font-bold text-green-600">
-              {summary.completedSessions}/{summary.totalSessions}
-            </div>
-            <div className="text-xs text-gray-500">Sessions</div>
+        <div className="text-right">
+          <div className="text-lg font-bold text-green-600">
+            {summary.completedSessions}/{summary.totalSessions}
           </div>
+          <div className="text-xs text-gray-500">Sessions</div>
         </div>
       </div>
 
       {/* Selected Plan Indicator */}
       {selectedPlan && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+        <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium text-green-800">
-                📋 Using Saved Plan: {selectedPlan.title}
+              <h4 className="text-sm font-medium text-green-800">
+                📋 {selectedPlan.title}
               </h4>
-              <p className="text-sm text-green-700">
-                {selectedPlan.description}
-              </p>
             </div>
             <button
               onClick={clearActivePlan}
@@ -214,18 +209,18 @@ export default function TrainingPlan({
       )}
 
       {/* Progress Bar */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-gray-700">
             Weekly Progress
           </span>
-          <span className="text-sm text-gray-500">
+          <span className="text-xs text-gray-500">
             {summary.progressPercentage}%
           </span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 rounded-full h-1.5">
           <div
-            className="bg-green-500 h-2 rounded-full transition-all duration-300"
+            className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
             style={{ width: `${summary.progressPercentage}%` }}
           ></div>
         </div>
@@ -233,18 +228,14 @@ export default function TrainingPlan({
 
       {/* Strava Connection Notice */}
       {!trainingData.connected && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 sm:p-4 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-sm">S</span>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 mb-3">
+          <div className="flex items-center space-x-2">
+            <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-xs">S</span>
             </div>
             <div>
-              <h4 className="font-medium text-orange-800">
-                Connect Strava for Real Progress
-              </h4>
-              <p className="text-sm text-orange-700">
-                Connect your Strava account to automatically track completed
-                training sessions.
+              <p className="text-xs text-orange-800">
+                Connect Strava to track completed sessions automatically
               </p>
             </div>
           </div>
@@ -252,11 +243,11 @@ export default function TrainingPlan({
       )}
 
       {/* Training Sessions */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {trainingPlan.map((session) => (
           <div
             key={session.id}
-            className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
+            className={`p-2 rounded-lg border transition-all ${
               session.completed
                 ? "border-green-200 bg-green-50"
                 : session.type === "rest"
@@ -265,22 +256,22 @@ export default function TrainingPlan({
             }`}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                <div className="text-xl sm:text-2xl flex-shrink-0">
+              <div className="flex items-center space-x-2 flex-1 min-w-0">
+                <div className="text-lg flex-shrink-0">
                   {getTypeIcon(session.type)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 mb-1">
-                    <h3 className="font-medium text-gray-800 text-sm sm:text-base">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <h3 className="font-medium text-gray-800 text-sm">
                       {session.day}
                     </h3>
-                    <span className="text-xs sm:text-sm text-gray-500">
+                    <span className="text-xs text-gray-500">
                       {session.date}
                     </span>
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(
+                      className={`px-1.5 py-0.5 rounded text-xs font-medium ${getTypeColor(
                         session.type
-                      )} self-start sm:self-auto`}
+                      )}`}
                     >
                       {session.type.charAt(0).toUpperCase() +
                         session.type.slice(1)}
@@ -289,68 +280,48 @@ export default function TrainingPlan({
 
                   {/* Show actual activity details if completed */}
                   {session.completed && session.actualActivity ? (
-                    <div className="mb-2">
-                      <p className="text-sm font-medium text-green-800 mb-1">
-                        ✅ Completed: {session.actualActivity.name}
+                    <div className="mb-1">
+                      <p className="text-xs font-medium text-green-800 mb-0.5">
+                        ✅ {session.actualActivity.name}
                       </p>
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-green-700">
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="w-3 h-3" />
-                          <span>{session.actualActivity.distance}km</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Clock className="w-3 h-3" />
-                          <span>{session.actualActivity.duration}</span>
-                        </div>
-                        <div>
-                          <span>{session.actualActivity.pace}'/km pace</span>
-                        </div>
+                      <div className="flex items-center gap-3 text-xs text-green-700">
+                        <span>{session.actualActivity.distance}km</span>
+                        <span>{session.actualActivity.duration}</span>
+                        <span>{session.actualActivity.pace}'/km</span>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="text-xs text-gray-600 mb-1">
                       {session.description}
                     </p>
                   )}
 
                   {/* Show planned session details */}
-                  {!session.completed && (
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-500">
-                      {session.duration !== "Rest" && (
-                        <>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{session.duration}</span>
-                          </div>
-                          {session.distance && (
-                            <div className="flex items-center space-x-1">
-                              <MapPin className="w-3 h-3" />
-                              <span>{session.distance}</span>
-                            </div>
-                          )}
-                        </>
-                      )}
+                  {!session.completed && session.duration !== "Rest" && (
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <span>{session.duration}</span>
+                      {session.distance && <span>{session.distance}</span>}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 flex-shrink-0">
+              <div className="flex items-center space-x-1 flex-shrink-0">
                 {session.completed ? (
-                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm">✓</span>
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
                   </div>
                 ) : session.type !== "rest" ? (
-                  <button className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600 transition-colors">
-                    <Play className="w-4 h-4 text-white ml-0.5" />
+                  <button className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600 transition-colors">
+                    <Play className="w-3 h-3 text-white ml-0.5" />
                   </button>
                 ) : (
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    <span className="text-gray-600 text-sm">💤</span>
+                  <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
+                    <span className="text-gray-600 text-xs">💤</span>
                   </div>
                 )}
-                <button className="p-1 text-gray-400 hover:text-gray-600">
-                  <MoreVertical className="w-4 h-4" />
+                <button className="p-0.5 text-gray-400 hover:text-gray-600">
+                  <MoreVertical className="w-3 h-3" />
                 </button>
               </div>
             </div>
@@ -359,25 +330,25 @@ export default function TrainingPlan({
       </div>
 
       {/* AI Coaching Tip */}
-      <div className="mt-6 p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="flex items-start space-x-3">
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-            <TrendingUp className="w-4 h-4 text-white" />
+      <div className="mt-4 p-2 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="flex items-start space-x-2">
+          <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="w-3 h-3 text-white" />
           </div>
           <div>
-            <h4 className="font-medium text-blue-900 mb-1">Coach's Tip</h4>
-            <p className="text-sm text-blue-800">
+            <h4 className="text-xs font-medium text-blue-900 mb-0.5">
+              Coach's Tip
+            </h4>
+            <p className="text-xs text-blue-800">
               {summary.completedSessions > 0
-                ? `Great progress! You've completed ${
-                    summary.completedSessions
-                  } out of ${summary.totalSessions} sessions this week. ${
+                ? `${summary.completedSessions}/${
+                    summary.totalSessions
+                  } sessions completed. ${
                     summary.progressPercentage >= 70
-                      ? "You're on track for a strong week!"
-                      : "Keep pushing to reach your weekly goals!"
+                      ? "You're on track!"
+                      : "Keep pushing!"
                   }`
-                : selectedPlan
-                ? `Your "${selectedPlan.title}" training plan is active! Start with today's session to build momentum for the week.`
-                : "Your training plan is ready! Start with today's session to build momentum for the week."}
+                : "Start with today's session to build momentum."}
             </p>
           </div>
         </div>
