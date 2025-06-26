@@ -225,6 +225,10 @@ export default function Dashboard() {
     "zone2",
   ]);
 
+  // Drag and drop state
+  const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
+  const [dragOverWidget, setDragOverWidget] = useState<string | null>(null);
+
   // Mini chat state
   const [showAIPopup, setShowAIPopup] = useState(false);
   const [miniChatMessages, setMiniChatMessages] = useState<
@@ -264,17 +268,27 @@ export default function Dashboard() {
     widgetType: string,
     size: "small" | "medium" | "large"
   ) => {
+    // Base row calculations - more conservative to prevent overlaps
     const baseRows = {
-      todaysActivity: todaysActivity ? 2 : 3,
-      calories: 2,
-      heartRate: 2,
-      steps: 2,
-      performanceChart: 4,
-      trainingPlan: 4,
-      recentRuns: 3,
-      zone2: 4,
+      todaysActivity: todaysActivity ? 3 : 4,
+      calories: 3,
+      heartRate: 3,
+      steps: 3,
+      performanceChart: 6,
+      trainingPlan: 6,
+      recentRuns: 5,
+      zone2: 6,
     };
-    return baseRows[widgetType as keyof typeof baseRows] || 2;
+
+    // Adjust based on widget size
+    const sizeMultiplier = {
+      small: 0.8,
+      medium: 1.0,
+      large: 1.2,
+    };
+
+    const baseSpan = baseRows[widgetType as keyof typeof baseRows] || 3;
+    return Math.max(2, Math.ceil(baseSpan * sizeMultiplier[size]));
   };
 
   const updateWidgetSize = (
@@ -351,6 +365,54 @@ export default function Dashboard() {
     ]);
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, widgetId: string) => {
+    if (!isEditMode) return;
+    setDraggedWidget(widgetId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/html", widgetId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, widgetId: string) => {
+    if (!isEditMode || !draggedWidget) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverWidget(widgetId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverWidget(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetWidgetId: string) => {
+    if (!isEditMode || !draggedWidget) return;
+    e.preventDefault();
+
+    if (draggedWidget === targetWidgetId) {
+      setDraggedWidget(null);
+      setDragOverWidget(null);
+      return;
+    }
+
+    const newOrder = [...widgetOrder];
+    const draggedIndex = newOrder.indexOf(draggedWidget);
+    const targetIndex = newOrder.indexOf(targetWidgetId);
+
+    // Remove the dragged widget from its current position
+    newOrder.splice(draggedIndex, 1);
+    // Insert it at the target position
+    newOrder.splice(targetIndex, 0, draggedWidget);
+
+    setWidgetOrder(newOrder);
+    setDraggedWidget(null);
+    setDragOverWidget(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedWidget(null);
+    setDragOverWidget(null);
+  };
+
   const WidgetResizeControls = ({
     widgetId,
     currentSize,
@@ -362,6 +424,13 @@ export default function Dashboard() {
 
     return (
       <div className="absolute top-2 right-2 flex items-center space-x-1 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
+        {/* Drag Handle */}
+        <div
+          className="w-6 h-6 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300 transition-colors cursor-move flex items-center justify-center"
+          title="Drag to reorder"
+        >
+          ⋮⋮
+        </div>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -784,8 +853,8 @@ export default function Dashboard() {
                 </span>
               </div>
               <p className="text-blue-700 text-sm mt-1">
-                Click the S/M/L buttons on any widget to resize it. Click Save
-                Layout when done.
+                Drag widgets using the ⋮⋮ handle to reorder them, or use S/M/L
+                buttons to resize. Click Save Layout when done.
               </p>
             </div>
           )}
@@ -797,14 +866,18 @@ export default function Dashboard() {
             }`}
             style={{
               gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gridAutoRows: "120px",
-              gridAutoFlow: "row dense",
+              gridAutoRows: "minmax(120px, auto)",
+              gridAutoFlow: "row",
             }}
           >
             {/* Today's Activity Card - Medium height */}
             <div
               className={`bg-white rounded-xl p-6 shadow-sm group relative ${
                 isEditMode ? "ring-2 ring-blue-200 hover:ring-blue-300" : ""
+              } ${draggedWidget === "todaysActivity" ? "opacity-50" : ""} ${
+                dragOverWidget === "todaysActivity"
+                  ? "ring-4 ring-blue-400"
+                  : ""
               }`}
               style={{
                 gridRowEnd: `span ${getRowSpan(
@@ -815,6 +888,12 @@ export default function Dashboard() {
                   widgetSizes.todaysActivity
                 )}`,
               }}
+              draggable={isEditMode}
+              onDragStart={(e) => handleDragStart(e, "todaysActivity")}
+              onDragOver={(e) => handleDragOver(e, "todaysActivity")}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, "todaysActivity")}
+              onDragEnd={handleDragEnd}
             >
               <WidgetResizeControls
                 widgetId="todaysActivity"
