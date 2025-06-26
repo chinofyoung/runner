@@ -101,11 +101,11 @@ function calculateHeartRateZones(
         zones = calculateMaxHRZones(actualMaxHR);
       } else {
         zones = {
-          zone1: { min: Math.round(lthr * 0.5), max: Math.round(lthr * 0.65) }, // Recovery
-          zone2: { min: Math.round(lthr * 0.65), max: Math.round(lthr * 0.8) }, // Aerobic Base
-          zone3: { min: Math.round(lthr * 0.8), max: Math.round(lthr * 0.9) }, // Aerobic
-          zone4: { min: Math.round(lthr * 0.9), max: Math.round(lthr * 1.0) }, // Threshold
-          zone5: { min: Math.round(lthr * 1.0), max: Math.round(lthr * 1.1) }, // Neuromuscular
+          zone1: { min: Math.round(lthr * 0.6), max: Math.round(lthr * 0.85) }, // Recovery
+          zone2: { min: Math.round(lthr * 0.86), max: Math.round(lthr * 0.89) }, // Aerobic Base
+          zone3: { min: Math.round(lthr * 0.90), max: Math.round(lthr * 0.94) }, // Aerobic
+          zone4: { min: Math.round(lthr * 0.95), max: Math.round(lthr * 0.99) }, // Threshold
+          zone5: { min: Math.round(lthr * 1.0), max: Math.round(lthr * 1.05) }, // Neuromuscular
         };
       }
       break;

@@ -208,6 +208,7 @@ export default function Dashboard() {
     todaysActivity: "medium",
     metrics: "medium",
     todayTomorrow: "medium",
+    aiSummary: "large",
     performanceChart: "large",
     trainingPlan: "large",
     recentRuns: "medium",
@@ -217,6 +218,7 @@ export default function Dashboard() {
     "todaysActivity",
     "metrics",
     "todayTomorrow",
+    "aiSummary",
     "performanceChart",
     "trainingPlan",
     "recentRuns",
@@ -309,6 +311,7 @@ export default function Dashboard() {
           todaysActivity: "medium",
           metrics: "medium",
           todayTomorrow: "medium",
+          aiSummary: "large",
           performanceChart: "large",
           trainingPlan: "large",
           recentRuns: "medium",
@@ -319,6 +322,7 @@ export default function Dashboard() {
           "todaysActivity",
           "metrics",
           "todayTomorrow",
+          "aiSummary",
           "performanceChart",
           "trainingPlan",
           "recentRuns",
@@ -349,6 +353,7 @@ export default function Dashboard() {
       todaysActivity: "medium",
       metrics: "medium",
       todayTomorrow: "medium",
+      aiSummary: "large",
       performanceChart: "large",
       trainingPlan: "large",
       recentRuns: "medium",
@@ -358,6 +363,7 @@ export default function Dashboard() {
       "todaysActivity",
       "metrics",
       "todayTomorrow",
+      "aiSummary",
       "performanceChart",
       "trainingPlan",
       "recentRuns",
@@ -508,6 +514,33 @@ export default function Dashboard() {
       console.error("Error fetching training plan:", error);
     } finally {
       setTrainingPlanLoading(false);
+    }
+  };
+
+  // AI Fitness Summary state
+  const [aiSummaryData, setAiSummaryData] = useState<any>(null);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
+
+  const fetchAISummary = async () => {
+    try {
+      setAiSummaryLoading(true);
+      setAiSummaryError(null);
+      const response = await fetch("/api/ai-fitness-summary");
+      if (response.ok) {
+        const data = await response.json();
+        setAiSummaryData(data);
+      } else {
+        const errorData = await response.json();
+        setAiSummaryError(
+          errorData.summary || "Failed to generate fitness summary"
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching AI summary:", error);
+      setAiSummaryError("Unable to analyze your fitness data at the moment.");
+    } finally {
+      setAiSummaryLoading(false);
     }
   };
 
@@ -831,6 +864,154 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case "aiSummary":
+        return (
+          <div key={widgetId} {...getWidgetProps(widgetId)}>
+            <WidgetResizeControls
+              widgetId={widgetId}
+              currentSize={widgetSizes[widgetId]}
+            />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  AI Fitness Analysis
+                </h2>
+                <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">AI</span>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                {aiSummaryData?.dataSource === "cached" && (
+                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                    Cached Data
+                  </span>
+                )}
+                <button
+                  onClick={fetchAISummary}
+                  disabled={aiSummaryLoading}
+                  className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                  title="Refresh analysis"
+                >
+                  <svg
+                    className={`w-4 h-4 ${
+                      aiSummaryLoading ? "animate-spin" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {aiSummaryLoading ? (
+              <div className="animate-pulse space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                <div className="space-y-2 mt-4">
+                  <div className="h-3 bg-gray-200 rounded w-full"></div>
+                  <div className="h-3 bg-gray-200 rounded w-4/5"></div>
+                  <div className="h-3 bg-gray-200 rounded w-3/5"></div>
+                </div>
+              </div>
+            ) : aiSummaryError ? (
+              <div className="text-center py-6">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-red-500 text-xl">⚠️</span>
+                </div>
+                <h3 className="text-base font-medium text-gray-800 mb-2">
+                  Analysis Unavailable
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">{aiSummaryError}</p>
+                <button
+                  onClick={fetchAISummary}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : aiSummaryData?.summary ? (
+              <div className="space-y-4">
+                <div className="prose prose-sm max-w-none">
+                  <div
+                    className="text-gray-700 leading-relaxed whitespace-pre-wrap text-sm"
+                    dangerouslySetInnerHTML={{
+                      __html: aiSummaryData.summary
+                        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                        .replace(/\*(.*?)\*/g, "<em>$1</em>")
+                        .replace(
+                          /🏃‍♂️|🎯|💪|⚡|🔥|✅/g,
+                          '<span class="text-lg">$&</span>'
+                        ),
+                    }}
+                  />
+                </div>
+
+                {/* Summary Stats */}
+                <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <div className="text-lg font-bold text-blue-600">
+                        {aiSummaryData.activityCount || 0}
+                      </div>
+                      <div className="text-xs text-blue-700">
+                        Activities Analyzed
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-purple-600">
+                        {aiSummaryData.lastUpdated
+                          ? new Date(
+                              aiSummaryData.lastUpdated
+                            ).toLocaleDateString()
+                          : "Today"}
+                      </div>
+                      <div className="text-xs text-purple-700">
+                        Last Updated
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Powered by AI notice */}
+                <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 mt-3">
+                  <div className="w-4 h-4 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">✨</span>
+                  </div>
+                  <span>Powered by AI analysis of your Strava data</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-xl">🤖</span>
+                </div>
+                <h3 className="text-base font-medium text-gray-800 mb-2">
+                  No Analysis Available
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Connect your Strava account to get AI-powered fitness insights
+                </p>
+                <button
+                  onClick={() => (window.location.href = "/settings")}
+                  className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
+                >
+                  Connect Strava
+                </button>
               </div>
             )}
           </div>
@@ -1224,6 +1405,7 @@ export default function Dashboard() {
         fetchStravaData(),
         fetchSyncStatus(),
         fetchTrainingPlan(),
+        fetchAISummary(),
       ]);
       setLoading(false);
 
@@ -1313,36 +1495,120 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
-        <div>
-          <div className="mb-6 sm:mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                Welcome back, Chino! 🏃‍♂️
-              </h1>
-              <p className="text-gray-600">
-                Here's your training overview and today's insights
-              </p>
-            </div>
+        {loading ? (
+          /* Single Elegant Loader */
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center space-y-6">
+              {/* Animated Logo */}
+              <div className="relative mx-auto w-24 h-24">
+                <div className="absolute inset-0 w-24 h-24 border-4 border-green-200 rounded-full"></div>
+                <div className="absolute inset-0 w-24 h-24 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="absolute inset-3 w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-2xl">Cb</span>
+                </div>
+              </div>
 
-            {/* Layout Controls */}
-            <div className="flex items-center space-x-3">
-              {isEditMode ? (
-                <>
+              {/* Loading Text */}
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Loading Dashboard
+                </h2>
+                <p className="text-gray-600">
+                  Fetching your training data and insights...
+                </p>
+              </div>
+
+              {/* Progress Indicators */}
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-bounce"></div>
+                <div
+                  className="w-3 h-3 bg-green-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.1s" }}
+                ></div>
+                <div
+                  className="w-3 h-3 bg-green-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.2s" }}
+                ></div>
+              </div>
+
+              {/* Loading Status */}
+              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm max-w-md mx-auto">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700">
+                      Loading Strava activities...
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700">
+                      Generating AI insights...
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700">
+                      Preparing your dashboard...
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Dashboard Content */
+          <div className="animate-in fade-in duration-500">
+            <div className="mb-6 sm:mb-8 flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+                  Welcome back, Chino! 🏃‍♂️
+                </h1>
+                <p className="text-gray-600">
+                  Here's your training overview and today's insights
+                </p>
+              </div>
+
+              {/* Layout Controls */}
+              <div className="flex items-center space-x-3">
+                {isEditMode ? (
+                  <>
+                    <button
+                      onClick={resetLayout}
+                      className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={() => setIsEditMode(false)}
+                      className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveLayout}
+                      className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium flex items-center space-x-2"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span>Save Layout</span>
+                    </button>
+                  </>
+                ) : (
                   <button
-                    onClick={resetLayout}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    onClick={() => setIsEditMode(false)}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveLayout}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium flex items-center space-x-2"
+                    onClick={() => setIsEditMode(true)}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium flex items-center space-x-2"
                   >
                     <svg
                       className="w-4 h-4"
@@ -1354,94 +1620,74 @@ export default function Dashboard() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M5 13l4 4L19 7"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                       />
                     </svg>
-                    <span>Save Layout</span>
+                    <span>Edit Layout</span>
                   </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setIsEditMode(true)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium flex items-center space-x-2"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                  <span>Edit Layout</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Strava Connection Notice */}
-          {!stravaConnected && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 mb-8">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">S</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-orange-800 mb-2">
-                    Connect to Strava for Real Data
-                  </h3>
-                  <p className="text-orange-700 mb-4">
-                    Connect your Strava account to see your actual running
-                    activities, progress, and performance metrics instead of
-                    placeholder data.
-                  </p>
-                  <button
-                    onClick={() => router.push("/settings")}
-                    className="bg-orange-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors"
-                  >
-                    Connect Strava →
-                  </button>
-                </div>
+                )}
               </div>
             </div>
-          )}
 
-          {/* Edit Mode Notice */}
-          {isEditMode && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                <span className="text-blue-800 font-medium">
-                  Edit Mode Active
-                </span>
+            {/* Strava Connection Notice */}
+            {!stravaConnected && (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 mb-8">
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">S</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-orange-800 mb-2">
+                      Connect to Strava for Real Data
+                    </h3>
+                    <p className="text-orange-700 mb-4">
+                      Connect your Strava account to see your actual running
+                      activities, progress, and performance metrics instead of
+                      placeholder data.
+                    </p>
+                    <button
+                      onClick={() => router.push("/settings")}
+                      className="bg-orange-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors"
+                    >
+                      Connect Strava →
+                    </button>
+                  </div>
+                </div>
               </div>
-              <p className="text-blue-700 text-sm mt-1">
-                Drag widgets using the ⋮⋮ handle to reorder them, or use S/M/L
-                buttons to resize. Click Save Layout when done.
-              </p>
-            </div>
-          )}
+            )}
 
-          {/* Dashboard Content - Masonry Grid */}
-          <div
-            className={`grid gap-4 sm:gap-6 ${
-              isEditMode ? "transition-all duration-300" : ""
-            }`}
-            style={{
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gridAutoRows: "auto",
-              gridAutoFlow: "row",
-            }}
-          >
-            {/* Dynamic Widget Rendering */}
-            {widgetOrder.map((widgetId) => renderWidget(widgetId))}
+            {/* Edit Mode Notice */}
+            {isEditMode && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span className="text-blue-800 font-medium">
+                    Edit Mode Active
+                  </span>
+                </div>
+                <p className="text-blue-700 text-sm mt-1">
+                  Drag widgets using the ⋮⋮ handle to reorder them, or use S/M/L
+                  buttons to resize. Click Save Layout when done.
+                </p>
+              </div>
+            )}
+
+            {/* Dashboard Content - Masonry Grid */}
+            <div
+              className={`grid gap-4 sm:gap-6 ${
+                isEditMode ? "transition-all duration-300" : ""
+              }`}
+              style={{
+                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                gridAutoRows: "auto",
+                gridAutoFlow: "row",
+              }}
+            >
+              {/* Dynamic Widget Rendering */}
+              {widgetOrder.map((widgetId) => renderWidget(widgetId))}
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Floating AI Coach Chat Button */}
