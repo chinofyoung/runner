@@ -264,7 +264,10 @@ export default function SettingsPage() {
         setStravaData(data);
         setStravaConnected(data.connected);
       } else {
-        console.error("Failed to fetch Strava data");
+        // Only log error if it's not a 401 (not connected) status
+        if (response.status !== 401) {
+          console.error("Failed to fetch Strava data");
+        }
         setStravaConnected(false);
       }
     } catch (error) {

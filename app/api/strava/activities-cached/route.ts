@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 // Supabase configuration
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -56,7 +57,7 @@ const supabaseRequest = async (
 
   const responseText = await response.text();
   if (!responseText) return [];
-  
+
   return JSON.parse(responseText);
 };
 
@@ -72,31 +73,53 @@ function formatDistance(meters: number): number {
 function formatDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  
+
   if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${(seconds % 60)
+      .toString()
+      .padStart(2, "0")}`;
   } else {
-    return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
+    return `${minutes}:${(seconds % 60).toString().padStart(2, "0")}`;
   }
 }
 
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId();
-  
+
   try {
+    // Check authentication first
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get("strava_access_token")?.value;
+
+    if (!accessToken) {
+      return NextResponse.json(
+        {
+          error: "Not connected to Strava",
+          message: "Please connect your Strava account first",
+          connected: false,
+          hasData: false,
+          needsSync: true,
+        },
+        { status: 401 }
+      );
+    }
+
     // Check if user has synced data
     const profile = await supabaseRequest("GET", "user_profiles", null, {
       user_id: `eq.${userId}`,
-      limit: "1"
+      limit: "1",
     });
 
     if (!profile || profile.length === 0) {
-      return NextResponse.json({
-        error: "No synced data found",
-        message: "Please sync your Strava activities first",
-        hasData: false,
-        needsSync: true,
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "No synced data found",
+          message: "Please sync your Strava activities first",
+          hasData: false,
+          needsSync: true,
+        },
+        { status: 404 }
+      );
     }
 
     const userProfile = profile[0];
@@ -110,7 +133,7 @@ export async function GET(request: NextRequest) {
       type: `in.("Run")`,
       start_date_local: `gte.${twelveMonthsAgo.toISOString()}`,
       order: "start_date_local.desc",
-      limit: "500"
+      limit: "500",
     });
 
     if (!runningActivities || runningActivities.length === 0) {
@@ -137,13 +160,19 @@ export async function GET(request: NextRequest) {
     // Process data for monthly performance charts (last 12 months)
     const monthlyData = new Map();
     const currentDate = new Date();
-    
+
     // Initialize last 12 months
     for (let i = 11; i >= 0; i--) {
-      const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+      const monthDate = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() - i,
+        1
+      );
+      const monthKey = `${monthDate.getFullYear()}-${String(
+        monthDate.getMonth() + 1
+      ).padStart(2, "0")}`;
       const monthName = monthDate.toLocaleDateString("en", { month: "short" });
-      
+
       monthlyData.set(monthKey, {
         month: monthName,
         year: monthDate.getFullYear(),
@@ -152,20 +181,23 @@ export async function GET(request: NextRequest) {
         totalCalories: 0,
         totalHeartrate: 0,
         runCount: 0,
-        totalPaceSum: 0
+        totalPaceSum: 0,
       });
     }
 
     // Aggregate activities by month
     runningActivities.forEach((activity: any) => {
       const date = new Date(activity.start_date_local);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
+      const monthKey = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}`;
+
       if (monthlyData.has(monthKey)) {
         const monthStats = monthlyData.get(monthKey);
         const pace = convertToKmPace(activity.average_speed);
-        const calories = activity.calories || Math.round((activity.distance / 1000) * 65);
-        
+        const calories =
+          activity.calories || Math.round((activity.distance / 1000) * 65);
+
         monthStats.totalDistance += activity.distance / 1000; // Convert to km
         monthStats.totalTime += activity.moving_time / 60; // Convert to minutes
         monthStats.totalCalories += calories;
@@ -177,14 +209,15 @@ export async function GET(request: NextRequest) {
 
     // Calculate averages and format performance data
     const performanceData = Array.from(monthlyData.values())
-      .filter(monthStats => monthStats.runCount > 0) // Only include months with runs
-      .map(monthStats => ({
+      .filter((monthStats) => monthStats.runCount > 0) // Only include months with runs
+      .map((monthStats) => ({
         month: monthStats.month,
-        pace: Math.round((monthStats.totalPaceSum / monthStats.runCount) * 10) / 10,
+        pace:
+          Math.round((monthStats.totalPaceSum / monthStats.runCount) * 10) / 10,
         distance: Math.round(monthStats.totalDistance * 10) / 10,
         calories: Math.round(monthStats.totalCalories / monthStats.runCount),
         heartrate: Math.round(monthStats.totalHeartrate / monthStats.runCount),
-        runs: monthStats.runCount
+        runs: monthStats.runCount,
       }));
 
     // Weekly distance data (last 8 weeks)
@@ -199,7 +232,7 @@ export async function GET(request: NextRequest) {
       const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       weekStart.setDate(weekStart.getDate() - daysToMonday);
       weekStart.setHours(0, 0, 0, 0);
-      
+
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
@@ -217,15 +250,21 @@ export async function GET(request: NextRequest) {
 
       // Format week label with actual dates
       const weekLabel = `${weekStart.getDate()}/${weekStart.getMonth() + 1}`;
-      const fullWeekLabel = `${weekStart.toLocaleDateString("en", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("en", { month: "short", day: "numeric" })}`;
+      const fullWeekLabel = `${weekStart.toLocaleDateString("en", {
+        month: "short",
+        day: "numeric",
+      })} - ${weekEnd.toLocaleDateString("en", {
+        month: "short",
+        day: "numeric",
+      })}`;
 
       weeklyData.push({
         week: weekLabel,
         fullWeek: fullWeekLabel,
         distance: Math.round(weekDistance * 10) / 10,
         runs: weekActivities.length,
-        weekStart: weekStart.toISOString().split('T')[0],
-        weekEnd: weekEnd.toISOString().split('T')[0],
+        weekStart: weekStart.toISOString().split("T")[0],
+        weekEnd: weekEnd.toISOString().split("T")[0],
       });
     }
 
@@ -244,11 +283,12 @@ export async function GET(request: NextRequest) {
             hour: "2-digit",
             minute: "2-digit",
           }),
-          rawDate: activityDate.toISOString().split('T')[0], // YYYY-MM-DD format
+          rawDate: activityDate.toISOString().split("T")[0], // YYYY-MM-DD format
           distance: formatDistance(activity.distance),
           duration: formatDuration(activity.moving_time),
           pace: convertToKmPace(activity.average_speed),
-          calories: activity.calories || Math.round((activity.distance / 1000) * 65),
+          calories:
+            activity.calories || Math.round((activity.distance / 1000) * 65),
           heartrate: activity.average_heartrate || 0,
           elevation: activity.total_elevation_gain || 0,
           type: activity.type,
@@ -256,35 +296,39 @@ export async function GET(request: NextRequest) {
       });
 
     // Summary stats (all running activities in cache)
-    const totalDistance = runningActivities.reduce(
-      (sum: number, act: any) => sum + act.distance,
-      0
-    ) / 1000; // km
-    
-    const totalTime = runningActivities.reduce(
-      (sum: number, act: any) => sum + act.moving_time,
-      0
-    ) / 3600; // hours
-    
-    const avgPace = runningActivities.length > 0
-      ? runningActivities.reduce(
-          (sum: number, act: any) => sum + convertToKmPace(act.average_speed),
-          0
-        ) / runningActivities.length
-      : 0;
-    
+    const totalDistance =
+      runningActivities.reduce(
+        (sum: number, act: any) => sum + act.distance,
+        0
+      ) / 1000; // km
+
+    const totalTime =
+      runningActivities.reduce(
+        (sum: number, act: any) => sum + act.moving_time,
+        0
+      ) / 3600; // hours
+
+    const avgPace =
+      runningActivities.length > 0
+        ? runningActivities.reduce(
+            (sum: number, act: any) => sum + convertToKmPace(act.average_speed),
+            0
+          ) / runningActivities.length
+        : 0;
+
     const totalCalories = runningActivities.reduce(
       (sum: number, act: any) =>
         sum + (act.calories || Math.round((act.distance / 1000) * 65)),
       0
     );
-    
-    const avgHeartrate = runningActivities.length > 0
-      ? runningActivities.reduce(
-          (sum: number, act: any) => sum + (act.average_heartrate || 0),
-          0
-        ) / runningActivities.length
-      : 0;
+
+    const avgHeartrate =
+      runningActivities.length > 0
+        ? runningActivities.reduce(
+            (sum: number, act: any) => sum + (act.average_heartrate || 0),
+            0
+          ) / runningActivities.length
+        : 0;
 
     const response = {
       performanceData,
@@ -307,7 +351,6 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-
   } catch (error) {
     console.error("Error fetching cached Strava data:", error);
     return NextResponse.json(
@@ -320,4 +363,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

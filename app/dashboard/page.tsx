@@ -962,25 +962,25 @@ export default function Dashboard() {
                 </div>
 
                 {/* Summary Stats */}
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="mt-4 p-3 bg-slate-700 rounded-lg border border-slate-500">
                   <div className="grid grid-cols-2 gap-4 text-center">
                     <div>
-                      <div className="text-lg font-bold text-blue-600">
+                      <div className="text-lg font-bold text-white">
                         {aiSummaryData.activityCount || 0}
                       </div>
-                      <div className="text-xs text-blue-700">
+                      <div className="text-xs text-white">
                         Activities Analyzed
                       </div>
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-purple-600">
+                      <div className="text-lg font-bold text-white">
                         {aiSummaryData.lastUpdated
                           ? new Date(
                               aiSummaryData.lastUpdated
                             ).toLocaleDateString()
                           : "Today"}
                       </div>
-                      <div className="text-xs text-purple-700">
+                      <div className="text-xs text-white">
                         Last Updated
                       </div>
                     </div>
@@ -1325,7 +1325,10 @@ export default function Dashboard() {
         setStravaData(data);
         setStravaConnected(data.connected);
       } else {
-        console.error("Failed to fetch Strava data");
+        // Only log error if it's not a 401 (not connected) status
+        if (response.status !== 401) {
+          console.error("Failed to fetch Strava data");
+        }
         setStravaConnected(false);
       }
     } catch (error) {
@@ -1503,9 +1506,6 @@ export default function Dashboard() {
               <div className="relative mx-auto w-24 h-24">
                 <div className="absolute inset-0 w-24 h-24 border-4 border-gray-600 rounded-full"></div>
                 <div className="absolute inset-0 w-24 h-24 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-                <div className="absolute inset-3 w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-2xl">Cb</span>
-                </div>
               </div>
 
               {/* Loading Text */}
