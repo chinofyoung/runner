@@ -1,112 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-
-// Supabase configuration
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import {
+  collection,
+  setDoc,
+  getDocs,
+  getDoc,
+  query,
+  where,
+  doc,
+  orderBy,
+  limit,
+  writeBatch,
+  serverTimestamp,
+  getCountFromServer
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // Demo user ID (same as training plans)
 const getCurrentUserId = (): string => {
   return "123e4567-e89b-12d3-a456-426614174000";
-};
-
-// Supabase request helper
-const supabaseRequest = async (
-  method: string,
-  endpoint: string,
-  body?: any,
-  queryParams?: Record<string, string>
-) => {
-  let url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
-
-  if (queryParams) {
-    const params = new URLSearchParams(queryParams);
-    url += `?${params.toString()}`;
-  }
-
-  const headers: Record<string, string> = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    "Content-Type": "application/json",
-    Prefer: method === "POST" ? "return=representation" : "return=minimal",
-  };
-
-  if (method === "POST" && Array.isArray(body)) {
-    headers.Prefer = "return=minimal";
-  }
-
-  const options: RequestInit = {
-    method,
-    headers,
-  };
-
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(url, options);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Supabase API Error:", {
-      status: response.status,
-      statusText: response.statusText,
-      url,
-      method,
-      body: Array.isArray(body) ? `Array of ${body.length} items` : body,
-      errorResponse: errorText,
-    });
-    throw new Error(
-      `Supabase API error: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
-
-  if (method === "DELETE" || response.status === 204) {
-    return null;
-  }
-
-  const responseText = await response.text();
-  if (!responseText) return null;
-  
-  return JSON.parse(responseText);
-};
-
-// Supabase upsert helper for handling conflicts
-const supabaseUpsert = async (
-  table: string,
-  data: any,
-  conflictColumn: string
-) => {
-  const url = `${SUPABASE_URL}/rest/v1/${table}`;
-
-  const headers: Record<string, string> = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    "Content-Type": "application/json",
-    "Prefer": "resolution=merge-duplicates",
-  };
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Supabase Upsert Error:", {
-      status: response.status,
-      statusText: response.statusText,
-      url,
-      errorResponse: errorText,
-    });
-    throw new Error(
-      `Supabase upsert error: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
-
-  const responseText = await response.text();
-  return responseText ? JSON.parse(responseText) : [];
 };
 
 // Fetch all activities from Strava with pagination
@@ -117,7 +29,7 @@ async function fetchAllStravaActivities(accessToken: string, per_page = 200) {
 
   while (hasMore) {
     console.log(`Fetching page ${page} of Strava activities...`);
-    
+
     const response = await fetch(
       `https://www.strava.com/api/v3/athlete/activities?per_page=${per_page}&page=${page}`,
       {
@@ -135,19 +47,19 @@ async function fetchAllStravaActivities(accessToken: string, per_page = 200) {
     }
 
     const activities = await response.json();
-    
+
     if (activities.length === 0) {
       hasMore = false;
     } else {
       allActivities = allActivities.concat(activities);
       page++;
-      
+
       // Add a small delay to respect rate limits
       if (activities.length === per_page) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
-    
+
     // Safety check to prevent infinite loops
     if (page > 100) {
       console.log("Reached maximum page limit (100), stopping sync");
@@ -162,7 +74,7 @@ async function fetchAllStravaActivities(accessToken: string, per_page = 200) {
 // Transform Strava activity to database format
 function transformActivity(activity: any, userId: string) {
   return {
-    id: activity.id || null,
+    id: String(activity.id), // Firestore IDs are strings
     user_id: userId,
     name: activity.name || null,
     type: activity.type || null,
@@ -220,6 +132,7 @@ async function logSyncOperation(
     user_id: userId,
     sync_type: syncType,
     status: status,
+    started_at: startTime ? startTime.toISOString() : new Date().toISOString(),
   };
 
   if (activitiesSynced !== undefined) logData.activities_synced = activitiesSynced;
@@ -231,7 +144,8 @@ async function logSyncOperation(
   }
 
   try {
-    await supabaseRequest("POST", "sync_logs", logData);
+    const logId = `${userId}_${Date.now()}`;
+    await setDoc(doc(db, "sync_logs", logId), logData);
   } catch (error) {
     console.error("Failed to log sync operation:", error);
   }
@@ -257,8 +171,7 @@ async function updateUserProfile(userId: string, athleteInfo: any, totalActiviti
   };
 
   try {
-    // Use Supabase upsert with proper headers
-    await supabaseUpsert("user_profiles", profileData, "user_id");
+    await setDoc(doc(db, "user_profiles", userId), profileData, { merge: true });
   } catch (error) {
     console.error("Failed to update user profile:", error);
   }
@@ -267,10 +180,10 @@ async function updateUserProfile(userId: string, athleteInfo: any, totalActiviti
 export async function POST(request: NextRequest) {
   const startTime = new Date();
   const userId = getCurrentUserId();
-  
+
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("strava_access_token")?.value;
+    const accessToken = cookieStore.get("strava_access_token")?.value || process.env.STRAVA_ACCESS_TOKEN;
 
     if (!accessToken) {
       return NextResponse.json(
@@ -280,7 +193,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log sync start
-    await logSyncOperation(userId, "full", "started");
+    await logSyncOperation(userId, "full", "started", undefined, undefined, undefined, startTime);
 
     console.log("Starting full Strava sync...");
 
@@ -297,7 +210,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch all activities
     const activities = await fetchAllStravaActivities(accessToken);
-    
+
     if (activities.length === 0) {
       await logSyncOperation(userId, "full", "completed", 0, 0, undefined, startTime);
       return NextResponse.json({
@@ -309,67 +222,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Transform activities for database
-    const transformedActivities = activities.map(activity => 
+    const transformedActivities = activities.map(activity =>
       transformActivity(activity, userId)
     );
 
     console.log(`Inserting ${transformedActivities.length} activities into database...`);
 
-    // Validate all objects have the same structure
-    if (transformedActivities.length > 0) {
-      const firstActivityKeys = Object.keys(transformedActivities[0]).sort();
-      
-      for (let i = 1; i < transformedActivities.length; i++) {
-        const currentKeys = Object.keys(transformedActivities[i]).sort();
-        if (JSON.stringify(firstActivityKeys) !== JSON.stringify(currentKeys)) {
-          console.error(`Activity ${i} has different keys:`, {
-            first: firstActivityKeys,
-            current: currentKeys,
-            activity: transformedActivities[i]
-          });
-        }
-      }
-    }
-
-    // Batch insert activities (Supabase handles upserts automatically with same ID)
+    // Batch insert activities (using setDoc with merge: true for upsert behavior)
     const batchSize = 100;
     let totalInserted = 0;
-    let totalUpdated = 0;
 
     for (let i = 0; i < transformedActivities.length; i += batchSize) {
-      const batch = transformedActivities.slice(i, i + batchSize);
-      
+      const batchItems = transformedActivities.slice(i, i + batchSize);
+      const batch = writeBatch(db);
+
+      batchItems.forEach(activity => {
+        const activityRef = doc(db, "activities", String(activity.id));
+        batch.set(activityRef, activity, { merge: true });
+      });
+
       try {
-        // Validate batch consistency before inserting
-        if (batch.length > 0) {
-          const batchKeys = Object.keys(batch[0]).sort();
-          for (let j = 1; j < batch.length; j++) {
-            const activityKeys = Object.keys(batch[j]).sort();
-            if (JSON.stringify(batchKeys) !== JSON.stringify(activityKeys)) {
-              console.error(`Batch ${i}-${i + batchSize} has inconsistent keys at activity ${j}:`, {
-                expected: batchKeys,
-                actual: activityKeys,
-                activityId: batch[j].id
-              });
-            }
-          }
-        }
-        
-        await supabaseRequest("POST", "activities", batch);
-        totalInserted += batch.length;
+        await batch.commit();
+        totalInserted += batchItems.length;
         console.log(`Processed ${Math.min(i + batchSize, transformedActivities.length)} of ${transformedActivities.length} activities`);
       } catch (error) {
-        console.error(`Failed to insert batch ${i}-${i + batchSize}:`, error);
-        
-        // Try inserting activities one by one to identify the problematic one
-        console.log("Attempting individual inserts for this batch...");
-        for (let j = 0; j < batch.length; j++) {
+        console.error(`Failed to commit batch ${i}-${i + batchSize}:`, error);
+
+        // Try individual setDoc if batch fails
+        for (const item of batchItems) {
           try {
-            await supabaseRequest("POST", "activities", [batch[j]]);
+            await setDoc(doc(db, "activities", String(item.id)), item, { merge: true });
             totalInserted += 1;
           } catch (singleError) {
-            console.error(`Failed to insert individual activity ${batch[j].id}:`, singleError);
-            console.error("Problematic activity data:", batch[j]);
+            console.error(`Failed to insert individual activity ${item.id}:`, singleError);
           }
         }
       }
@@ -379,7 +264,7 @@ export async function POST(request: NextRequest) {
     await updateUserProfile(userId, athleteInfo, activities.length);
 
     // Log successful completion
-    await logSyncOperation(userId, "full", "completed", totalInserted, totalUpdated, undefined, startTime);
+    await logSyncOperation(userId, "full", "completed", totalInserted, 0, undefined, startTime);
 
     console.log(`Sync completed successfully. Synced ${totalInserted} activities.`);
 
@@ -387,7 +272,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: `Successfully synced ${totalInserted} activities`,
       activitiesSynced: totalInserted,
-      activitiesUpdated: totalUpdated,
+      activitiesUpdated: 0,
       athleteInfo: {
         name: `${athleteInfo.firstname} ${athleteInfo.lastname}`,
         totalActivities: activities.length,
@@ -396,7 +281,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("Sync failed:", error);
-    
+
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     await logSyncOperation(userId, "full", "failed", 0, 0, errorMessage, startTime);
 
@@ -428,35 +313,36 @@ export async function POST(request: NextRequest) {
 // GET endpoint to check sync status
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId();
-  
+
   try {
     // Get latest sync log
-    const syncLogs = await supabaseRequest("GET", "sync_logs", null, {
-      user_id: `eq.${userId}`,
-      order: "started_at.desc",
-      limit: "1"
-    });
+    const syncLogsQuery = query(
+      collection(db, "sync_logs"),
+      where("user_id", "==", userId),
+      orderBy("started_at", "desc"),
+      limit(1)
+    );
+    const syncLogsSnap = await getDocs(syncLogsQuery);
+    const lastSync = !syncLogsSnap.empty ? syncLogsSnap.docs[0].data() : null;
 
     // Get user profile
-    const profiles = await supabaseRequest("GET", "user_profiles", null, {
-      user_id: `eq.${userId}`,
-      limit: "1"
-    });
+    const profileRef = doc(db, "user_profiles", userId);
+    const profileSnap = await getDoc(profileRef);
+    const profile = profileSnap.exists() ? profileSnap.data() : null;
 
     // Get activities count
-    const activitiesCount = await supabaseRequest("GET", "activities", null, {
-      user_id: `eq.${userId}`,
-      select: "count"
-    });
-
-    const lastSync = syncLogs && syncLogs.length > 0 ? syncLogs[0] : null;
-    const profile = profiles && profiles.length > 0 ? profiles[0] : null;
+    const activitiesQuery = query(
+      collection(db, "activities"),
+      where("user_id", "==", userId)
+    );
+    const activitiesCountSnap = await getCountFromServer(activitiesQuery);
+    const totalActivities = activitiesCountSnap.data().count;
 
     return NextResponse.json({
       lastSync: lastSync,
       profile: profile,
-      totalActivities: activitiesCount?.[0]?.count || 0,
-      hasData: (activitiesCount?.[0]?.count || 0) > 0,
+      totalActivities: totalActivities,
+      hasData: totalActivities > 0,
     });
 
   } catch (error) {
@@ -466,4 +352,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

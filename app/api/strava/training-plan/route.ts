@@ -262,8 +262,7 @@ async function getSelectedTrainingPlan(): Promise<SavedTrainingPlan | null> {
 
     // Fetch the saved plan from the training-plans API
     const response = await fetch(
-      `${
-        process.env.NEXTAUTH_URL || "http://localhost:3000"
+      `${process.env.NEXTAUTH_URL || "http://localhost:3000"
       }/api/training-plans?id=${selectedPlanId}`,
       {
         headers: {
@@ -287,7 +286,7 @@ async function getSelectedTrainingPlan(): Promise<SavedTrainingPlan | null> {
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("strava_access_token")?.value;
+    const accessToken = cookieStore.get("strava_access_token")?.value || process.env.STRAVA_ACCESS_TOKEN;
 
     // Check if there's a selected training plan
     const selectedPlan = await getSelectedTrainingPlan();
@@ -341,10 +340,10 @@ export async function GET(request: NextRequest) {
       connected: !!accessToken,
       selectedPlan: selectedPlan
         ? {
-            id: selectedPlan.id,
-            title: selectedPlan.title,
-            description: selectedPlan.description,
-          }
+          id: selectedPlan.id,
+          title: selectedPlan.title,
+          description: selectedPlan.description,
+        }
         : null,
     });
   } catch (error) {

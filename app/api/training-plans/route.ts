@@ -1,4 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  getDoc,
+  query,
+  where,
+  deleteDoc,
+  doc,
+  orderBy,
+  serverTimestamp,
+  Timestamp
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface TrainingSession {
   day: string;
@@ -14,72 +28,14 @@ interface TrainingPlan {
   description: string;
   duration: string;
   sessions: TrainingSession[];
-  created_at?: string;
+  created_at?: any;
   user_id?: string;
 }
-
-// Supabase configuration
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // For now, we'll use a simple user ID since we don't have auth implemented
 const getCurrentUserId = (): string => {
   // Use a valid UUID format for the demo user
   return "123e4567-e89b-12d3-a456-426614174000";
-};
-
-// Direct Supabase REST API calls
-const supabaseRequest = async (
-  method: string,
-  endpoint: string,
-  body?: any,
-  queryParams?: Record<string, string>
-) => {
-  let url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
-
-  if (queryParams) {
-    const params = new URLSearchParams(queryParams);
-    url += `?${params.toString()}`;
-  }
-
-  const headers: Record<string, string> = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    "Content-Type": "application/json",
-    Prefer: method === "POST" ? "return=representation" : "return=minimal",
-  };
-
-  const options: RequestInit = {
-    method,
-    headers,
-  };
-
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(url, options);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Supabase API Error:", {
-      status: response.status,
-      statusText: response.statusText,
-      url,
-      method,
-      body,
-      errorResponse: errorText,
-    });
-    throw new Error(
-      `Supabase API error: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
-
-  if (method === "DELETE") {
-    return null;
-  }
-
-  return response.json();
 };
 
 export async function GET(request: NextRequest) {
@@ -90,27 +46,33 @@ export async function GET(request: NextRequest) {
 
     if (planId) {
       // Fetch specific plan by ID
-      const plan = await supabaseRequest("GET", "training_plans", null, {
-        id: `eq.${planId}`,
-        user_id: `eq.${userId}`,
-      });
+      const docRef = doc(db, "training_plans", planId);
+      const docSnap = await getDoc(docRef);
 
-      if (!plan || plan.length === 0) {
+      if (!docSnap.exists() || docSnap.data().user_id !== userId) {
         return NextResponse.json(
           { error: "Training plan not found" },
           { status: 404 }
         );
       }
 
-      return NextResponse.json({ plan: plan[0] });
+      const plan = { id: docSnap.id, ...docSnap.data() } as TrainingPlan;
+      return NextResponse.json({ plan });
     } else {
       // Fetch all plans for the user
-      const plans = await supabaseRequest("GET", "training_plans", null, {
-        user_id: `eq.${userId}`,
-        order: "created_at.desc",
-      });
+      const q = query(
+        collection(db, "training_plans"),
+        where("user_id", "==", userId),
+        orderBy("created_at", "desc")
+      );
 
-      return NextResponse.json({ plans: plans || [] });
+      const querySnapshot = await getDocs(q);
+      const plans = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      return NextResponse.json({ plans });
     }
   } catch (error) {
     console.error("Error fetching saved plans:", error);
@@ -136,17 +98,19 @@ export async function POST(request: NextRequest) {
 
     const newPlan = {
       title: plan.title,
-      description: plan.description,
-      duration: plan.duration,
+      description: plan.description || "",
+      duration: plan.duration || "",
       sessions: plan.sessions,
       user_id: userId,
+      created_at: serverTimestamp(),
     };
 
-    const result = await supabaseRequest("POST", "training_plans", newPlan);
+    const docRef = await addDoc(collection(db, "training_plans"), newPlan);
+    const savedDoc = await getDoc(docRef);
 
     return NextResponse.json({
       success: true,
-      plan: result[0],
+      plan: { id: docRef.id, ...savedDoc.data() },
     });
   } catch (error) {
     console.error("Error saving training plan:", error);
@@ -170,11 +134,17 @@ export async function DELETE(request: NextRequest) {
     }
 
     const userId = getCurrentUserId();
+    const docRef = doc(db, "training_plans", planId);
+    const docSnap = await getDoc(docRef);
 
-    await supabaseRequest("DELETE", "training_plans", null, {
-      id: `eq.${planId}`,
-      user_id: `eq.${userId}`,
-    });
+    if (!docSnap.exists() || docSnap.data().user_id !== userId) {
+      return NextResponse.json(
+        { error: "Unauthorized or plan not found" },
+        { status: 403 }
+      );
+    }
+
+    await deleteDoc(docRef);
 
     return NextResponse.json({ success: true });
   } catch (error) {

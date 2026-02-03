@@ -1,63 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Supabase configuration
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // Demo user ID (same as training plans)
 const getCurrentUserId = (): string => {
   return "123e4567-e89b-12d3-a456-426614174000";
-};
-
-// Supabase request helper
-const supabaseRequest = async (
-  method: string,
-  endpoint: string,
-  body?: any,
-  queryParams?: Record<string, string>
-) => {
-  let url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
-
-  if (queryParams) {
-    const params = new URLSearchParams(queryParams);
-    url += `?${params.toString()}`;
-  }
-
-  const headers: Record<string, string> = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    "Content-Type": "application/json",
-  };
-
-  const options: RequestInit = {
-    method,
-    headers,
-  };
-
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(url, options);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Supabase API Error:", {
-      status: response.status,
-      statusText: response.statusText,
-      url,
-      method,
-      errorResponse: errorText,
-    });
-    throw new Error(
-      `Supabase API error: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
-
-  const responseText = await response.text();
-  if (!responseText) return method === "DELETE" ? {} : [];
-
-  return JSON.parse(responseText);
 };
 
 // GET - Fetch user preferences
@@ -66,13 +18,11 @@ export async function GET(request: NextRequest) {
 
   try {
     // Try to get existing user profile with settings
-    const profiles = await supabaseRequest("GET", "user_profiles", null, {
-      user_id: `eq.${userId}`,
-      limit: "1",
-    });
+    const profileRef = doc(db, "user_profiles", userId);
+    const docSnap = await getDoc(profileRef);
 
-    if (profiles && profiles.length > 0) {
-      const userProfile = profiles[0];
+    if (docSnap.exists()) {
+      const userProfile = docSnap.data();
       const settings = userProfile.settings || {};
 
       return NextResponse.json({
@@ -195,17 +145,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user profile already exists
-    const existingProfiles = await supabaseRequest(
-      "GET",
-      "user_profiles",
-      null,
-      {
-        user_id: `eq.${userId}`,
-        limit: "1",
-      }
-    );
-
     // Prepare the new settings object
     const newSettings = {
       maxHR: maxHR || null,
@@ -219,9 +158,12 @@ export async function POST(request: NextRequest) {
       age: age || null,
     };
 
-    if (existingProfiles && existingProfiles.length > 0) {
+    const profileRef = doc(db, "user_profiles", userId);
+    const docSnap = await getDoc(profileRef);
+
+    if (docSnap.exists()) {
       // Update existing user profile with new settings
-      const currentProfile = existingProfiles[0];
+      const currentProfile = docSnap.data();
       const currentSettings = currentProfile.settings || {};
 
       // Merge existing settings with new preferences
@@ -229,12 +171,10 @@ export async function POST(request: NextRequest) {
 
       const updateData = {
         settings: updatedSettings,
-        updated_at: new Date().toISOString(),
+        updated_at: serverTimestamp(),
       };
 
-      await supabaseRequest("PATCH", "user_profiles", updateData, {
-        user_id: `eq.${userId}`,
-      });
+      await setDoc(profileRef, updateData, { merge: true });
 
       return NextResponse.json({
         success: true,
@@ -246,11 +186,11 @@ export async function POST(request: NextRequest) {
       const profileData = {
         user_id: userId,
         settings: newSettings,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
       };
 
-      await supabaseRequest("POST", "user_profiles", profileData);
+      await setDoc(profileRef, profileData);
 
       return NextResponse.json({
         success: true,

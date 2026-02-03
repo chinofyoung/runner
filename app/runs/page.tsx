@@ -26,6 +26,7 @@ interface Run {
   heartrate: number;
   elevation: number;
   type: string;
+  ai_analysis?: string | null;
 }
 
 interface StravaData {
@@ -50,6 +51,31 @@ export default function AllRunsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [summary, setSummary] = useState<StravaData["summary"] | null>(null);
   const [isCachedData, setIsCachedData] = useState(false);
+  const [analyzingActivityId, setAnalyzingActivityId] = useState<number | null>(null);
+
+  const analyzeActivity = async (activityId: number) => {
+    try {
+      setAnalyzingActivityId(activityId);
+      const response = await fetch("/api/ai-activity-analysis", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ activityId }),
+      });
+
+      if (response.ok) {
+        // Refresh runs to get the new analysis
+        await fetchAllRunsData();
+      } else {
+        console.error("Failed to analyze activity");
+      }
+    } catch (error) {
+      console.error("Error analyzing activity:", error);
+    } finally {
+      setAnalyzingActivityId(null);
+    }
+  };
 
   const runsPerPage = 10;
   const totalPages = Math.ceil(allRuns.length / runsPerPage);
@@ -134,23 +160,23 @@ export default function AllRunsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-900">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-gray-800 shadow-sm border-b border-gray-700 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.back()}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                <h1 className="text-xl sm:text-2xl font-bold text-white">
                   All Runs
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-400">
                   {loading
                     ? "Loading..."
                     : `${allRuns.length} total activities`}
@@ -172,29 +198,29 @@ export default function AllRunsPage() {
         {summary && stravaConnected && (
           <div className="mb-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-blue-600">
+              <div className="bg-gray-800 rounded-lg p-4 text-center border border-gray-700 shadow-sm">
+                <div className="text-2xl font-bold text-blue-400">
                   {summary.totalRuns}
                 </div>
-                <div className="text-sm text-gray-600">Total Runs</div>
+                <div className="text-sm text-gray-300">Total Runs</div>
               </div>
-              <div className="bg-white rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-green-600">
+              <div className="bg-gray-800 rounded-lg p-4 text-center border border-gray-700 shadow-sm">
+                <div className="text-2xl font-bold text-green-400">
                   {summary.totalDistance}km
                 </div>
-                <div className="text-sm text-gray-600">Distance</div>
+                <div className="text-sm text-gray-300">Distance</div>
               </div>
-              <div className="bg-white rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-purple-600">
+              <div className="bg-gray-800 rounded-lg p-4 text-center border border-gray-700 shadow-sm">
+                <div className="text-2xl font-bold text-purple-400">
                   {summary.avgPace}'
                 </div>
-                <div className="text-sm text-gray-600">Avg Pace</div>
+                <div className="text-sm text-gray-300">Avg Pace</div>
               </div>
-              <div className="bg-white rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-red-600">
+              <div className="bg-gray-800 rounded-lg p-4 text-center border border-gray-700 shadow-sm">
+                <div className="text-2xl font-bold text-red-400">
                   {summary.totalCalories}
                 </div>
-                <div className="text-sm text-gray-600">Calories</div>
+                <div className="text-sm text-gray-300">Calories</div>
               </div>
             </div>
           </div>
@@ -230,16 +256,16 @@ export default function AllRunsPage() {
         {loading ? (
           <div className="space-y-3">
             {[...Array(runsPerPage)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg p-4 animate-pulse">
+              <div key={i} className="bg-gray-800 rounded-lg p-4 animate-pulse border border-gray-700">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                  <div className="w-10 h-10 bg-gray-700 rounded-lg"></div>
                   <div className="flex-1">
-                    <div className="h-4 bg-gray-200 rounded mb-2 w-2/3"></div>
-                    <div className="h-3 bg-gray-200 rounded mb-2 w-1/3"></div>
+                    <div className="h-4 bg-gray-700 rounded mb-2 w-2/3"></div>
+                    <div className="h-3 bg-gray-700 rounded mb-2 w-1/3"></div>
                     <div className="flex space-x-4">
-                      <div className="h-3 bg-gray-200 rounded w-12"></div>
-                      <div className="h-3 bg-gray-200 rounded w-12"></div>
-                      <div className="h-3 bg-gray-200 rounded w-12"></div>
+                      <div className="h-3 bg-gray-700 rounded w-12"></div>
+                      <div className="h-3 bg-gray-700 rounded w-12"></div>
+                      <div className="h-3 bg-gray-700 rounded w-12"></div>
                     </div>
                   </div>
                 </div>
@@ -253,7 +279,7 @@ export default function AllRunsPage() {
               {currentRuns.map((run) => (
                 <div
                   key={run.id}
-                  className="bg-white rounded-lg p-4 hover:shadow-md transition-all duration-200 border border-gray-100 hover:border-green-200"
+                  className="bg-gray-800 rounded-lg p-4 hover:shadow-md transition-all duration-200 border border-gray-700 hover:border-green-500/50"
                 >
                   <div className="flex items-center space-x-3">
                     <div
@@ -268,40 +294,61 @@ export default function AllRunsPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-medium text-gray-900 truncate">
-                          {run.name}
-                        </h3>
-                        <span className="text-sm text-gray-500 flex-shrink-0 ml-2">
-                          {formatDate(run.rawDate || run.date)}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-medium text-white truncate">
+                            {run.name}
+                          </h3>
+                          {run.ai_analysis && (
+                            <span className="text-[10px] font-medium bg-green-900/30 text-green-400 px-2 py-0.5 rounded border border-green-800/30 flex-shrink-0">
+                              AI Analyzed
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          {!run.ai_analysis && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                analyzeActivity(run.id);
+                              }}
+                              disabled={analyzingActivityId === run.id}
+                              className="text-[10px] font-medium bg-gray-700 text-gray-300 px-2 py-1 rounded border border-gray-600 hover:bg-green-600 hover:text-white hover:border-green-500 transition-colors disabled:opacity-50"
+                            >
+                              {analyzingActivityId === run.id ? "Analyzing..." : "Analyze Run"}
+                            </button>
+                          )}
+                          <span className="text-sm text-gray-400 flex-shrink-0">
+                            {formatDate(run.rawDate || run.date)}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-3 sm:grid-cols-5 gap-4 text-sm">
                         <div className="flex items-center space-x-1">
-                          <MapPin className="w-3 h-3 text-gray-400" />
-                          <span className="font-medium text-gray-900">
+                          <MapPin className="w-3 h-3 text-gray-500" />
+                          <span className="font-medium text-gray-200">
                             {run.distance}km
                           </span>
                         </div>
 
                         <div className="flex items-center space-x-1">
-                          <Clock className="w-3 h-3 text-gray-400" />
-                          <span className="font-medium text-gray-900">
+                          <Clock className="w-3 h-3 text-gray-500" />
+                          <span className="font-medium text-gray-200">
                             {run.duration}
                           </span>
                         </div>
 
                         <div className="flex items-center space-x-1">
-                          <TrendingUp className="w-3 h-3 text-gray-400" />
-                          <span className="font-medium text-gray-900">
+                          <TrendingUp className="w-3 h-3 text-gray-500" />
+                          <span className="font-medium text-gray-200">
                             {run.pace}'/km
                           </span>
                         </div>
 
                         {run.heartrate > 0 && (
                           <div className="flex items-center space-x-1">
-                            <Heart className="w-3 h-3 text-gray-400" />
-                            <span className="font-medium text-gray-900">
+                            <Heart className="w-3 h-3 text-gray-500" />
+                            <span className="font-medium text-gray-200">
                               {run.heartrate}bpm
                             </span>
                           </div>
@@ -311,6 +358,12 @@ export default function AllRunsPage() {
                           {run.calories} cal
                         </div>
                       </div>
+
+                      {run.ai_analysis && (
+                        <div className="mt-3 p-3 bg-gray-900/50 rounded-lg border border-gray-700 text-xs text-gray-300 italic">
+                          ✨ {run.ai_analysis}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -319,8 +372,8 @@ export default function AllRunsPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between bg-white rounded-lg p-4">
-                <div className="text-sm text-gray-500">
+              <div className="mt-6 flex items-center justify-between bg-gray-800 rounded-lg p-4 border border-gray-700 shadow-sm">
+                <div className="text-sm text-gray-400">
                   Showing {startIndex + 1}-{Math.min(endIndex, allRuns.length)}{" "}
                   of {allRuns.length} runs
                 </div>
@@ -329,11 +382,10 @@ export default function AllRunsPage() {
                   <button
                     onClick={() => goToPage(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className={`p-2 rounded-lg transition-colors ${
-                      currentPage === 1
-                        ? "text-gray-400 cursor-not-allowed"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                    }`}
+                    className={`p-2 rounded-lg transition-colors ${currentPage === 1
+                      ? "text-gray-600 cursor-not-allowed"
+                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-700"
+                      }`}
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
@@ -356,11 +408,10 @@ export default function AllRunsPage() {
                         <button
                           key={page}
                           onClick={() => goToPage(page)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            currentPage === page
-                              ? "bg-green-500 text-white"
-                              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                          }`}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
+                            ? "bg-green-500 text-white"
+                            : "text-gray-400 hover:text-gray-200 hover:bg-gray-700"
+                            }`}
                         >
                           {page}
                         </button>
@@ -371,11 +422,10 @@ export default function AllRunsPage() {
                   <button
                     onClick={() => goToPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className={`p-2 rounded-lg transition-colors ${
-                      currentPage === totalPages
-                        ? "text-gray-400 cursor-not-allowed"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                    }`}
+                    className={`p-2 rounded-lg transition-colors ${currentPage === totalPages
+                      ? "text-gray-600 cursor-not-allowed"
+                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-700"
+                      }`}
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
@@ -385,10 +435,10 @@ export default function AllRunsPage() {
           </>
         ) : stravaConnected ? (
           <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
               <Activity className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-white mb-2">
               No Runs Found
             </h3>
             <p className="text-gray-500">

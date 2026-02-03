@@ -12,12 +12,12 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="text-center">
-        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mx-auto mb-4">
-          <span className="text-white font-bold text-lg">Cb</span>
+        <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/20">
+          <span className="text-white font-bold text-2xl">Cb</span>
         </div>
-        <p className="text-gray-600">Redirecting to dashboard...</p>
+        <p className="text-gray-400 animate-pulse">Redirecting to dashboard...</p>
       </div>
     </div>
   );

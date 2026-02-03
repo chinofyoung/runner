@@ -89,11 +89,18 @@ export default function Progress() {
 
   // Mini chat state
   const [showAIPopup, setShowAIPopup] = useState(false);
-  const [miniChatMessages, setMiniChatMessages] = useState([
+  const [miniChatMessages, setMiniChatMessages] = useState<
+    Array<{
+      id: string;
+      content: string;
+      sender: "ai" | "user";
+      timestamp: Date;
+    }>
+  >([
     {
       id: "1",
       content: "Hi! Quick question about your training?",
-      sender: "ai" as const,
+      sender: "ai",
       timestamp: new Date(),
     },
   ]);
@@ -131,7 +138,7 @@ export default function Progress() {
     const userMessage = {
       id: Date.now().toString(),
       content: miniChatInput,
-      sender: "user" as const,
+      sender: "user" as "user" | "ai",
       timestamp: new Date(),
     };
 
@@ -167,7 +174,7 @@ export default function Progress() {
       const aiResponse = {
         id: (Date.now() + 1).toString(),
         content: data.message,
-        sender: "ai" as const,
+        sender: "ai" as "user" | "ai",
         timestamp: new Date(),
       };
 
@@ -178,7 +185,7 @@ export default function Progress() {
         id: (Date.now() + 1).toString(),
         content:
           "Sorry, I'm having trouble responding right now. Please try again.",
-        sender: "ai" as const,
+        sender: "ai" as "user" | "ai",
         timestamp: new Date(),
       };
       setMiniChatMessages((prev) => [...prev, errorResponse]);
@@ -198,44 +205,44 @@ export default function Progress() {
   }, [miniChatMessages]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-900">
       {/* Navigation Header */}
-      <header className="bg-white shadow-sm border-b border-gray-100 px-4 sm:px-6 py-4">
+      <header className="bg-gray-800 shadow-sm border-b border-gray-700 px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-4 sm:space-x-8">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">Cb</span>
               </div>
-              <span className="font-bold text-xl text-gray-800">ChinoBot</span>
+              <span className="font-bold text-xl text-white">ChinoBot</span>
             </div>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex space-x-6">
               <button
                 onClick={() => router.push("/dashboard")}
-                className="flex items-center space-x-2 font-medium text-gray-500 hover:text-gray-700"
+                className="flex items-center space-x-2 font-medium text-gray-400 hover:text-gray-200"
               >
                 <Activity className="w-5 h-5" />
                 <span>Dashboard</span>
               </button>
               <button
                 onClick={() => router.push("/progress")}
-                className="flex items-center space-x-2 font-medium text-green-500"
+                className="flex items-center space-x-2 font-medium text-green-400"
               >
                 <BarChart3 className="w-5 h-5" />
                 <span>Progress</span>
               </button>
               <button
                 onClick={() => router.push("/chat")}
-                className="flex items-center space-x-2 font-medium text-gray-500 hover:text-gray-700"
+                className="flex items-center space-x-2 font-medium text-gray-400 hover:text-gray-200"
               >
                 <MessageSquare className="w-5 h-5" />
                 <span>AI Coach</span>
               </button>
               <button
                 onClick={() => router.push("/settings")}
-                className="flex items-center space-x-2 font-medium text-gray-500 hover:text-gray-700"
+                className="flex items-center space-x-2 font-medium text-gray-400 hover:text-gray-200"
               >
                 <Settings className="w-5 h-5" />
                 <span>Settings</span>
@@ -250,7 +257,7 @@ export default function Progress() {
               <input
                 type="text"
                 placeholder="Search here..."
-                className="pl-10 pr-4 py-2 bg-gray-100 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-green-500 w-48 lg:w-64 text-gray-900 placeholder-gray-500"
+                className="pl-10 pr-4 py-2 bg-gray-700 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-green-500 w-48 lg:w-64 text-white placeholder-gray-400"
               />
             </div>
 
@@ -274,7 +281,7 @@ export default function Progress() {
 
         {/* Mobile Navigation Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 border-t border-gray-100">
+          <div className="md:hidden mt-4 pb-4 border-t border-gray-700">
             <nav className="flex flex-col space-y-2 mt-4">
               <button
                 onClick={() => {
@@ -324,7 +331,7 @@ export default function Progress() {
                   <input
                     type="text"
                     placeholder="Search here..."
-                    className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 placeholder-gray-500"
+                    className="w-full pl-10 pr-4 py-2 bg-gray-700 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-green-500 text-white placeholder-gray-400"
                   />
                 </div>
               </div>
@@ -336,10 +343,10 @@ export default function Progress() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
             Training Progress 📊
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-400">
             Track your performance trends and achievements
           </p>
         </div>
@@ -347,10 +354,10 @@ export default function Progress() {
         {loading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white rounded-xl p-6 shadow-sm">
+              <div key={i} className="bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-700">
                 <div className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
-                  <div className="h-32 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-700 rounded w-1/3 mb-4"></div>
+                  <div className="h-32 bg-gray-700 rounded"></div>
                 </div>
               </div>
             ))}
@@ -358,13 +365,13 @@ export default function Progress() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Monthly Performance */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
+            <div className="bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-700">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800">
+                  <h3 className="text-lg font-semibold text-gray-200">
                     Monthly Performance
                   </h3>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-400">
                     {stravaData?.isCachedData
                       ? "Cached performance data"
                       : "Live performance metrics"}
@@ -434,28 +441,28 @@ export default function Progress() {
                         if (active && payload && payload.length > 0) {
                           const data = payload[0].payload;
                           return (
-                            <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                              <p className="font-semibold text-gray-800 mb-2">
+                            <div className="bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-700">
+                              <p className="font-semibold text-white mb-2">
                                 {label}
                               </p>
                               <div className="space-y-1 text-sm">
-                                <p className="text-gray-600">
+                                <p className="text-gray-300">
                                   <span className="font-medium">Pace:</span>{" "}
                                   {data.pace}'/km
                                 </p>
-                                <p className="text-gray-600">
+                                <p className="text-gray-300">
                                   <span className="font-medium">Distance:</span>{" "}
                                   {data.distance}km
                                 </p>
-                                <p className="text-gray-600">
+                                <p className="text-gray-300">
                                   <span className="font-medium">Runs:</span>{" "}
                                   {data.runs}
                                 </p>
-                                <p className="text-gray-600">
+                                <p className="text-gray-300">
                                   <span className="font-medium">Avg HR:</span>{" "}
                                   {data.heartrate} bpm
                                 </p>
-                                <p className="text-gray-600">
+                                <p className="text-gray-300">
                                   <span className="font-medium">Calories:</span>{" "}
                                   {data.calories}
                                 </p>
@@ -480,13 +487,13 @@ export default function Progress() {
             </div>
 
             {/* Weekly Distance */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
+            <div className="bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-700">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800">
+                  <h3 className="text-lg font-semibold text-gray-200">
                     Weekly Distance
                   </h3>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-400">
                     {stravaData?.dataRange || "Last 8 weeks"}
                   </p>
                 </div>
@@ -582,6 +589,7 @@ export default function Progress() {
                       dataKey="distance"
                       fill="#3B82F6"
                       radius={[4, 4, 0, 0]}
+                      className="opacity-80 hover:opacity-100 transition-opacity"
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -590,8 +598,8 @@ export default function Progress() {
 
             {/* Summary Stats */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-800 mb-6">
+              <div className="bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-200 mb-6">
                   Training Summary
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -599,46 +607,46 @@ export default function Progress() {
                     <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
                       <Footprints className="w-6 h-6 text-green-600" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-800">
+                    <div className="text-2xl font-bold text-white">
                       {stravaData?.summary.totalDistance || 138}
                     </div>
-                    <div className="text-xs text-gray-500">Total km</div>
+                    <div className="text-xs text-gray-400">Total km</div>
                   </div>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
                       <Clock className="w-6 h-6 text-blue-600" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-800">
+                    <div className="text-2xl font-bold text-white">
                       {Math.round((stravaData?.summary.totalTime || 850) / 60)}h
                     </div>
-                    <div className="text-xs text-gray-500">Total time</div>
+                    <div className="text-xs text-gray-400">Total time</div>
                   </div>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
                       <Timer className="w-6 h-6 text-purple-600" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-800">
+                    <div className="text-2xl font-bold text-white">
                       {stravaData?.summary.avgPace || 3.8}'
                     </div>
-                    <div className="text-xs text-gray-500">Avg pace</div>
+                    <div className="text-xs text-gray-400">Avg pace</div>
                   </div>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
                       <Heart className="w-6 h-6 text-red-600" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-800">
+                    <div className="text-2xl font-bold text-white">
                       {stravaData?.summary.avgHeartrate || 142}
                     </div>
-                    <div className="text-xs text-gray-500">Avg HR</div>
+                    <div className="text-xs text-gray-400">Avg HR</div>
                   </div>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
                       <Flame className="w-6 h-6 text-orange-600" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-800">
+                    <div className="text-2xl font-bold text-white">
                       {stravaData?.summary.totalCalories || 8650}
                     </div>
-                    <div className="text-xs text-gray-500">Calories</div>
+                    <div className="text-xs text-gray-400">Calories</div>
                   </div>
                 </div>
               </div>
@@ -657,14 +665,14 @@ export default function Progress() {
 
       {/* AI Coach Popup */}
       {showAIPopup && (
-        <div className="fixed bottom-4 sm:bottom-24 right-4 sm:right-6 w-full max-w-sm sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 animate-slide-in-from-bottom mx-4 sm:mx-0">
-          <div className="p-4 border-b border-gray-100">
+        <div className="fixed bottom-4 sm:bottom-24 right-4 sm:right-6 w-full max-w-sm sm:w-96 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 z-50 animate-slide-in-from-bottom mx-4 sm:mx-0">
+          <div className="p-4 border-b border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
-                <h3 className="font-semibold text-gray-800">AI Coach</h3>
+                <h3 className="font-semibold text-white">AI Coach</h3>
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -672,13 +680,13 @@ export default function Progress() {
                     setShowAIPopup(false);
                     router.push("/chat");
                   }}
-                  className="text-green-500 text-xs font-medium hover:underline"
+                  className="text-green-400 text-xs font-medium hover:underline"
                 >
                   Full Chat →
                 </button>
                 <button
                   onClick={() => setShowAIPopup(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-200 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -691,16 +699,14 @@ export default function Progress() {
             {miniChatMessages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${
-                  message.sender === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"
+                  }`}
               >
                 <div
-                  className={`max-w-[75%] p-3 rounded-lg text-sm ${
-                    message.sender === "user"
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
+                  className={`max-w-[75%] p-3 rounded-lg text-sm ${message.sender === "user"
+                    ? "bg-green-500 text-white"
+                    : "bg-gray-700 text-gray-200"
+                    }`}
                 >
                   {message.content}
                 </div>
@@ -709,7 +715,7 @@ export default function Progress() {
 
             {miniChatLoading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 text-gray-800 rounded-lg p-3 max-w-[75%]">
+                <div className="bg-gray-700 text-gray-200 rounded-lg p-3 max-w-[75%]">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                     <div
@@ -730,7 +736,7 @@ export default function Progress() {
           </div>
 
           {/* Input Area */}
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-700">
             <div className="flex items-center space-x-2">
               <input
                 type="text"
@@ -742,7 +748,7 @@ export default function Progress() {
                   }
                 }}
                 placeholder="Ask about training..."
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm text-gray-900 placeholder-gray-500"
+                className="flex-1 px-3 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm text-white placeholder-gray-400 bg-gray-700"
                 disabled={miniChatLoading}
               />
               <button

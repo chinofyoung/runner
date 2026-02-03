@@ -1,64 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-
-// Supabase configuration
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import {
+  collection,
+  getDocs,
+  getDoc,
+  query,
+  where,
+  doc,
+  orderBy,
+  limit
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // Demo user ID (same as training plans)
 const getCurrentUserId = (): string => {
   return "123e4567-e89b-12d3-a456-426614174000";
-};
-
-// Supabase request helper
-const supabaseRequest = async (
-  method: string,
-  endpoint: string,
-  body?: any,
-  queryParams?: Record<string, string>
-) => {
-  let url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
-
-  if (queryParams) {
-    const params = new URLSearchParams(queryParams);
-    url += `?${params.toString()}`;
-  }
-
-  const headers: Record<string, string> = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    "Content-Type": "application/json",
-  };
-
-  const options: RequestInit = {
-    method,
-    headers,
-  };
-
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(url, options);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Supabase API Error:", {
-      status: response.status,
-      statusText: response.statusText,
-      url,
-      method,
-      errorResponse: errorText,
-    });
-    throw new Error(
-      `Supabase API error: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
-
-  const responseText = await response.text();
-  if (!responseText) return [];
-
-  return JSON.parse(responseText);
 };
 
 function convertToKmPace(speedMs: number): number {
@@ -89,7 +45,7 @@ export async function GET(request: NextRequest) {
   try {
     // Check authentication first
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("strava_access_token")?.value;
+    const accessToken = cookieStore.get("strava_access_token")?.value || process.env.STRAVA_ACCESS_TOKEN;
 
     if (!accessToken) {
       return NextResponse.json(
@@ -105,36 +61,42 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has synced data
-    const profile = await supabaseRequest("GET", "user_profiles", null, {
-      user_id: `eq.${userId}`,
-      limit: "1",
-    });
+    const profileRef = doc(db, "user_profiles", userId);
+    const profileSnap = await getDoc(profileRef);
 
-    if (!profile || profile.length === 0) {
+    if (!profileSnap.exists()) {
       return NextResponse.json(
         {
           error: "No synced data found",
           message: "Please sync your Strava activities first",
           hasData: false,
+          connected: true,
           needsSync: true,
         },
         { status: 404 }
       );
     }
 
-    const userProfile = profile[0];
+    const userProfile = profileSnap.data();
 
     // Fetch running activities from cache (last 12 months for proper monthly analysis)
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
 
-    const runningActivities = await supabaseRequest("GET", "activities", null, {
-      user_id: `eq.${userId}`,
-      type: `in.("Run")`,
-      start_date_local: `gte.${twelveMonthsAgo.toISOString()}`,
-      order: "start_date_local.desc",
-      limit: "500",
-    });
+    const q = query(
+      collection(db, "activities"),
+      where("user_id", "==", userId),
+      where("type", "==", "Run"),
+      where("start_date_local", ">=", twelveMonthsAgo.toISOString()),
+      orderBy("start_date_local", "desc"),
+      limit(500)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const runningActivities = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as any[];
 
     if (!runningActivities || runningActivities.length === 0) {
       return NextResponse.json({
@@ -292,6 +254,7 @@ export async function GET(request: NextRequest) {
           heartrate: activity.average_heartrate || 0,
           elevation: activity.total_elevation_gain || 0,
           type: activity.type,
+          ai_analysis: activity.ai_analysis || null,
         };
       });
 
@@ -311,9 +274,9 @@ export async function GET(request: NextRequest) {
     const avgPace =
       runningActivities.length > 0
         ? runningActivities.reduce(
-            (sum: number, act: any) => sum + convertToKmPace(act.average_speed),
-            0
-          ) / runningActivities.length
+          (sum: number, act: any) => sum + convertToKmPace(act.average_speed),
+          0
+        ) / runningActivities.length
         : 0;
 
     const totalCalories = runningActivities.reduce(
@@ -325,9 +288,9 @@ export async function GET(request: NextRequest) {
     const avgHeartrate =
       runningActivities.length > 0
         ? runningActivities.reduce(
-            (sum: number, act: any) => sum + (act.average_heartrate || 0),
-            0
-          ) / runningActivities.length
+          (sum: number, act: any) => sum + (act.average_heartrate || 0),
+          0
+        ) / runningActivities.length
         : 0;
 
     const response = {
@@ -353,6 +316,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     console.error("Error fetching cached Strava data:", error);
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes("index")) {
+      console.error("FIREBASE INDEX ERROR: ", errorMessage);
+      return NextResponse.json(
+        {
+          error: "Database index missing",
+          message: "The database is still being optimized. This usually takes less than a minute.",
+          details: errorMessage
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: "Failed to fetch cached activities",

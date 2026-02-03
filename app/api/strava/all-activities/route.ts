@@ -1,63 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Supabase configuration
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import {
+  collection,
+  getDocs,
+  getDoc,
+  query,
+  where,
+  doc,
+  orderBy
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // Demo user ID (same as training plans)
 const getCurrentUserId = (): string => {
   return "123e4567-e89b-12d3-a456-426614174000";
-};
-
-// Supabase request helper
-const supabaseRequest = async (
-  method: string,
-  endpoint: string,
-  body?: any,
-  queryParams?: Record<string, string>
-) => {
-  let url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
-
-  if (queryParams) {
-    const params = new URLSearchParams(queryParams);
-    url += `?${params.toString()}`;
-  }
-
-  const headers: Record<string, string> = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    "Content-Type": "application/json",
-  };
-
-  const options: RequestInit = {
-    method,
-    headers,
-  };
-
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(url, options);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Supabase API Error:", {
-      status: response.status,
-      statusText: response.statusText,
-      url,
-      method,
-      errorResponse: errorText,
-    });
-    throw new Error(
-      `Supabase API error: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
-
-  const responseText = await response.text();
-  if (!responseText) return [];
-
-  return JSON.parse(responseText);
 };
 
 function convertToKmPace(speedMs: number): number {
@@ -87,12 +42,10 @@ export async function GET(request: NextRequest) {
 
   try {
     // Check if user has synced data
-    const profile = await supabaseRequest("GET", "user_profiles", null, {
-      user_id: `eq.${userId}`,
-      limit: "1",
-    });
+    const profileRef = doc(db, "user_profiles", userId);
+    const profileSnap = await getDoc(profileRef);
 
-    if (!profile || profile.length === 0) {
+    if (!profileSnap.exists()) {
       return NextResponse.json(
         {
           error: "No synced data found",
@@ -113,20 +66,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userProfile = profile[0];
+    const userProfile = profileSnap.data();
 
     // Fetch ALL running activities from cache (no limit for pagination)
-    const allRunningActivities = await supabaseRequest(
-      "GET",
-      "activities",
-      null,
-      {
-        user_id: `eq.${userId}`,
-        type: `in.("Run")`,
-        order: "start_date_local.desc",
-        // Remove limit to get all activities
-      }
+    const q = query(
+      collection(db, "activities"),
+      where("user_id", "==", userId),
+      where("type", "==", "Run"),
+      orderBy("start_date_local", "desc")
     );
+
+    const querySnapshot = await getDocs(q);
+    const allRunningActivities = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as any[];
 
     if (!allRunningActivities || allRunningActivities.length === 0) {
       return NextResponse.json({
@@ -169,6 +123,7 @@ export async function GET(request: NextRequest) {
         heartrate: activity.average_heartrate || 0,
         elevation: activity.total_elevation_gain || 0,
         type: activity.type,
+        ai_analysis: activity.ai_analysis || null,
       };
     });
 
@@ -188,9 +143,9 @@ export async function GET(request: NextRequest) {
     const avgPace =
       allRunningActivities.length > 0
         ? allRunningActivities.reduce(
-            (sum: number, act: any) => sum + convertToKmPace(act.average_speed),
-            0
-          ) / allRunningActivities.length
+          (sum: number, act: any) => sum + convertToKmPace(act.average_speed),
+          0
+        ) / allRunningActivities.length
         : 0;
 
     const totalCalories = allRunningActivities.reduce(
@@ -202,9 +157,9 @@ export async function GET(request: NextRequest) {
     const avgHeartrate =
       allRunningActivities.length > 0
         ? allRunningActivities.reduce(
-            (sum: number, act: any) => sum + (act.average_heartrate || 0),
-            0
-          ) / allRunningActivities.length
+          (sum: number, act: any) => sum + (act.average_heartrate || 0),
+          0
+        ) / allRunningActivities.length
         : 0;
 
     const response = {

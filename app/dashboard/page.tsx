@@ -176,6 +176,7 @@ interface StravaData {
     heartrate: number;
     elevation: number;
     type: string;
+    ai_analysis?: string | null;
   }>;
   summary: {
     totalDistance: number;
@@ -442,11 +443,10 @@ export default function Dashboard() {
             e.stopPropagation();
             updateWidgetSize(widgetId, "small");
           }}
-          className={`w-6 h-6 rounded text-xs font-medium transition-colors ${
-            currentSize === "small"
-              ? "bg-green-500 text-white"
-              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-          }`}
+          className={`w-6 h-6 rounded text-xs font-medium transition-colors ${currentSize === "small"
+            ? "bg-green-500 text-white"
+            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
           title="1/3 width"
         >
           S
@@ -456,11 +456,10 @@ export default function Dashboard() {
             e.stopPropagation();
             updateWidgetSize(widgetId, "medium");
           }}
-          className={`w-6 h-6 rounded text-xs font-medium transition-colors ${
-            currentSize === "medium"
-              ? "bg-green-500 text-white"
-              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-          }`}
+          className={`w-6 h-6 rounded text-xs font-medium transition-colors ${currentSize === "medium"
+            ? "bg-green-500 text-white"
+            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
           title="1/2 width"
         >
           M
@@ -470,11 +469,10 @@ export default function Dashboard() {
             e.stopPropagation();
             updateWidgetSize(widgetId, "large");
           }}
-          className={`w-6 h-6 rounded text-xs font-medium transition-colors ${
-            currentSize === "large"
-              ? "bg-green-500 text-white"
-              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-          }`}
+          className={`w-6 h-6 rounded text-xs font-medium transition-colors ${currentSize === "large"
+            ? "bg-green-500 text-white"
+            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
           title="Full width"
         >
           L
@@ -522,11 +520,15 @@ export default function Dashboard() {
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
 
-  const fetchAISummary = async () => {
+  // Activity Analysis state
+  const [analyzingActivityId, setAnalyzingActivityId] = useState<number | null>(null);
+
+  const fetchAISummary = async (force = false) => {
     try {
       setAiSummaryLoading(true);
       setAiSummaryError(null);
-      const response = await fetch("/api/ai-fitness-summary");
+      const url = force ? "/api/ai-fitness-summary?force=true" : "/api/ai-fitness-summary";
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setAiSummaryData(data);
@@ -541,6 +543,30 @@ export default function Dashboard() {
       setAiSummaryError("Unable to analyze your fitness data at the moment.");
     } finally {
       setAiSummaryLoading(false);
+    }
+  };
+
+  const analyzeActivity = async (activityId: number) => {
+    try {
+      setAnalyzingActivityId(activityId);
+      const response = await fetch("/api/ai-activity-analysis", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ activityId }),
+      });
+
+      if (response.ok) {
+        // Refresh Strava data to get the new analysis
+        await fetchStravaData();
+      } else {
+        console.error("Failed to analyze activity");
+      }
+    } catch (error) {
+      console.error("Error analyzing activity:", error);
+    } finally {
+      setAnalyzingActivityId(null);
     }
   };
 
@@ -571,9 +597,8 @@ export default function Dashboard() {
       const editModeClasses = isEditMode
         ? "ring-2 ring-blue-200 hover:ring-blue-300"
         : "";
-      const dragClasses = `${draggedWidget === widgetId ? "opacity-50" : ""} ${
-        dragOverWidget === widgetId ? "ring-4 ring-blue-400" : ""
-      }`;
+      const dragClasses = `${draggedWidget === widgetId ? "opacity-50" : ""} ${dragOverWidget === widgetId ? "ring-4 ring-blue-400" : ""
+        }`;
 
       if (widgetId === "trainingPlan") {
         return `${baseClasses} ${editModeClasses} ${dragClasses}`;
@@ -886,21 +911,25 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                {aiSummaryData?.dataSource === "cached" && (
-                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                    Cached Data
+                {aiSummaryData?.dataSource === "cached_analysis" && (
+                  <span className="px-2 py-1 bg-blue-900/50 text-blue-300 text-[10px] font-medium rounded-full border border-blue-800/50">
+                    Weekly Analysis
+                  </span>
+                )}
+                {aiSummaryData?.isFresh && (
+                  <span className="px-2 py-1 bg-green-900/50 text-green-300 text-[10px] font-medium rounded-full border border-green-800/50">
+                    New Analysis
                   </span>
                 )}
                 <button
-                  onClick={fetchAISummary}
+                  onClick={() => fetchAISummary(true)}
                   disabled={aiSummaryLoading}
-                  className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-                  title="Refresh analysis"
+                  className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors border border-gray-700 disabled:opacity-50"
+                  title="Force re-analyze (Minimizes token use)"
                 >
                   <svg
-                    className={`w-4 h-4 ${
-                      aiSummaryLoading ? "animate-spin" : ""
-                    }`}
+                    className={`w-4 h-4 ${aiSummaryLoading ? "animate-spin" : ""
+                      }`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -938,7 +967,7 @@ export default function Dashboard() {
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">{aiSummaryError}</p>
                 <button
-                  onClick={fetchAISummary}
+                  onClick={() => fetchAISummary(false)}
                   className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
                 >
                   Try Again
@@ -976,8 +1005,8 @@ export default function Dashboard() {
                       <div className="text-lg font-bold text-white">
                         {aiSummaryData.lastUpdated
                           ? new Date(
-                              aiSummaryData.lastUpdated
-                            ).toLocaleDateString()
+                            aiSummaryData.lastUpdated
+                          ).toLocaleDateString()
                           : "Today"}
                       </div>
                       <div className="text-xs text-white">
@@ -1031,11 +1060,11 @@ export default function Dashboard() {
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
                   {stravaData?.recentActivities &&
-                  stravaData.recentActivities.length > 0
+                    stravaData.recentActivities.length > 0
                     ? `Your last ${Math.min(
-                        stravaData.recentActivities.length,
-                        10
-                      )} runs`
+                      stravaData.recentActivities.length,
+                      10
+                    )} runs`
                     : "Your running speed over time"}
                 </p>
               </div>
@@ -1107,9 +1136,8 @@ export default function Dashboard() {
           <div
             key={widgetId}
             {...getWidgetProps(widgetId)}
-            className={`${getWidgetClasses(widgetId)} ${
-              isEditMode ? "rounded-2xl" : ""
-            }`}
+            className={`${getWidgetClasses(widgetId)} ${isEditMode ? "rounded-2xl" : ""
+              }`}
           >
             <WidgetResizeControls
               widgetId={widgetId}
@@ -1143,7 +1171,7 @@ export default function Dashboard() {
               </button>
             </div>
             {stravaData?.recentActivities &&
-            stravaData.recentActivities.length > 0 ? (
+              stravaData.recentActivities.length > 0 ? (
               <div className="space-y-3">
                 {stravaData.recentActivities.slice(0, 4).map((run) => (
                   <div
@@ -1155,17 +1183,41 @@ export default function Dashboard() {
                         <span className="text-white text-xs">🏃</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-300 text-sm truncate group-hover:text-green-200 transition-colors">
-                          {run.name}
-                        </h4>
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-gray-200 text-sm truncate group-hover:text-green-400 transition-colors">
+                            {run.name}
+                          </h4>
+                          {!run.ai_analysis && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                analyzeActivity(run.id);
+                              }}
+                              disabled={analyzingActivityId === run.id}
+                              className="text-[10px] font-medium bg-gray-700 text-gray-300 px-2 py-0.5 rounded border border-gray-600 hover:bg-green-600 hover:text-white hover:border-green-500 transition-colors disabled:opacity-50"
+                            >
+                              {analyzingActivityId === run.id ? "Analyzing..." : "AI Analyze"}
+                            </button>
+                          )}
+                          {run.ai_analysis && (
+                            <span className="text-[10px] font-medium bg-green-900/30 text-green-400 px-2 py-0.5 rounded border border-green-800/30">
+                              Analyzed
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-500 mb-1">{run.date}</p>
-                        <div className="flex items-center space-x-2 text-xs text-gray-600">
+                        <div className="flex items-center space-x-2 text-xs text-gray-400">
                           <span>{run.distance}km</span>
                           <span>•</span>
                           <span>{run.duration}</span>
                           <span>•</span>
                           <span>{run.pace}'/km</span>
                         </div>
+                        {run.ai_analysis && (
+                          <div className="mt-2 p-2 bg-gray-900/50 rounded-lg border border-gray-700 text-[10px] text-gray-300 italic line-clamp-2">
+                            ✨ {run.ai_analysis}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1319,21 +1371,25 @@ export default function Dashboard() {
     try {
       setLoading(true);
       const response = await fetch("/api/strava/activities-cached");
+      const data = await response.json();
 
       if (response.ok) {
-        const data = await response.json();
         setStravaData(data);
         setStravaConnected(data.connected);
       } else {
-        // Only log error if it's not a 401 (not connected) status
-        if (response.status !== 401) {
-          console.error("Failed to fetch Strava data");
+        // If 404 (No data found) but the response says connected, keep it true
+        if (response.status === 404 && data.connected) {
+          setStravaConnected(true);
+          setStravaData(null); // Clear data but keep connection
+        } else if (response.status === 401) {
+          setStravaConnected(false);
+        } else {
+          console.error("Failed to fetch Strava data:", data.error || response.statusText);
         }
-        setStravaConnected(false);
       }
     } catch (error) {
       console.error("Error fetching Strava data:", error);
-      setStravaConnected(false);
+      // Don't set connected to false here, as it might just be a network error
     } finally {
       setLoading(false);
     }
@@ -1674,9 +1730,8 @@ export default function Dashboard() {
 
             {/* Dashboard Content - Masonry Grid */}
             <div
-              className={`grid gap-4 sm:gap-6 ${
-                isEditMode ? "transition-all duration-300" : ""
-              }`}
+              className={`grid gap-4 sm:gap-6 ${isEditMode ? "transition-all duration-300" : ""
+                }`}
               style={{
                 gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
                 gridAutoRows: "auto",
@@ -1734,16 +1789,14 @@ export default function Dashboard() {
             {miniChatMessages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${
-                  message.sender === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"
+                  }`}
               >
                 <div
-                  className={`max-w-[75%] p-3 rounded-lg text-sm ${
-                    message.sender === "user"
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-700 text-gray-200"
-                  }`}
+                  className={`max-w-[75%] p-3 rounded-lg text-sm ${message.sender === "user"
+                    ? "bg-green-500 text-white"
+                    : "bg-gray-700 text-gray-200"
+                    }`}
                 >
                   {message.content}
                 </div>

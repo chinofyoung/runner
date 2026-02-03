@@ -244,17 +244,17 @@ export default function AIChat() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case "easy":
-        return "bg-green-100 text-green-800";
+        return "bg-green-900/30 text-green-400 border border-green-800/30";
       case "tempo":
-        return "bg-orange-100 text-orange-800";
+        return "bg-orange-900/30 text-orange-400 border border-orange-800/30";
       case "interval":
-        return "bg-red-100 text-red-800";
+        return "bg-red-900/30 text-red-400 border border-red-800/30";
       case "long":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-900/30 text-blue-400 border border-blue-800/30";
       case "rest":
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-700 text-gray-300 border border-gray-600";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-700 text-gray-300 border border-gray-600";
     }
   };
 
@@ -423,13 +423,13 @@ export default function AIChat() {
   };
 
   return (
-    <div className="flex h-full bg-white">
+    <div className="flex h-full bg-gray-900 rounded-xl overflow-hidden shadow-xl border border-gray-700">
       {/* Conversation History Sidebar */}
       {showHistory && (
-        <div className="w-80 border-r border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-200">
+        <div className="w-80 border-r border-gray-700 bg-gray-800 flex flex-col">
+          <div className="p-4 border-b border-gray-700">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-800">Chat History</h3>
+              <h3 className="font-semibold text-white">Chat History</h3>
               <button
                 onClick={() => setShowHistory(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -439,13 +439,13 @@ export default function AIChat() {
             </div>
 
             <div className="relative mb-3">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+              <Search className="w-4 h-4 absolute left-3 top-3 text-gray-500" />
               <input
                 type="text"
                 placeholder="Search conversations..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400"
               />
             </div>
 
@@ -460,7 +460,7 @@ export default function AIChat() {
 
           <div className="flex-1 overflow-y-auto">
             {filteredConversations.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 text-sm">
+              <div className="p-4 text-center text-gray-400 text-sm">
                 {searchTerm
                   ? "No conversations found"
                   : "No conversation history"}
@@ -470,22 +470,21 @@ export default function AIChat() {
                 {filteredConversations.map((conversation) => (
                   <div
                     key={conversation.id}
-                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                      conversation.id === currentConversationId
-                        ? "bg-green-50 border border-green-200"
-                        : "hover:bg-gray-50"
-                    }`}
+                    className={`p-3 rounded-lg cursor-pointer transition-colors ${conversation.id === currentConversationId
+                        ? "bg-gray-700 border border-green-500/30"
+                        : "hover:bg-gray-700/50"
+                      }`}
                     onClick={() => loadConversation(conversation.id)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-800 text-sm truncate">
+                        <h4 className="font-medium text-gray-200 text-sm truncate">
                           {conversation.title}
                         </h4>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-400 mt-1">
                           {conversation.messages.length} messages
                         </p>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-gray-500 mt-1">
                           {conversation.updated_at.toLocaleDateString()}
                         </p>
                       </div>
@@ -510,28 +509,28 @@ export default function AIChat() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/20">
                 <Bot className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-800">
+                <h1 className="text-xl font-bold text-white">
                   AI Running Coach
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-400">
                   Your personal training assistant with conversation memory
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
                 {messages.length - 1} messages
               </span>
               <button
                 onClick={() => setShowHistory(!showHistory)}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
                 title="Chat History"
               >
                 <History className="w-5 h-5" />
@@ -545,16 +544,14 @@ export default function AIChat() {
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${
-                message.sender === "user" ? "justify-end" : "justify-start"
-              }`}
+              className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"
+                }`}
             >
               <div
-                className={`max-w-3xl ${
-                  message.sender === "user"
-                    ? "bg-green-500 text-white"
-                    : "bg-gray-100 text-gray-800"
-                } rounded-lg p-4 shadow-sm`}
+                className={`max-w-3xl ${message.sender === "user"
+                    ? "bg-green-600 text-white shadow-lg shadow-green-900/20"
+                    : "bg-gray-800 text-gray-200 border border-gray-700 shadow-sm"
+                  } rounded-2xl p-4`}
               >
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0">
@@ -575,9 +572,9 @@ export default function AIChat() {
 
                     {/* Training Plan Display */}
                     {message.trainingPlan && (
-                      <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-semibold text-gray-800">
+                      <div className="mt-4 bg-gray-900/50 rounded-xl p-4 border border-gray-700">
+                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-700">
+                          <h4 className="font-semibold text-white">
                             📋 {message.trainingPlan.title}
                           </h4>
                           {!savedPlans.includes(message.id) && (
@@ -585,25 +582,25 @@ export default function AIChat() {
                               onClick={() =>
                                 savePlan(message.id, message.trainingPlan!)
                               }
-                              className="flex items-center space-x-1 bg-green-500 text-white px-3 py-1 rounded-lg text-xs font-medium hover:bg-green-600 transition-colors"
+                              className="flex items-center space-x-1 bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-green-600 transition-all active:scale-95 shadow-lg shadow-green-500/20"
                             >
                               <Save className="w-3 h-3" />
                               <span>Save Plan</span>
                             </button>
                           )}
                           {savedPlans.includes(message.id) && (
-                            <div className="flex items-center space-x-1 text-green-600 text-xs font-medium">
+                            <div className="flex items-center space-x-1 text-green-400 text-xs font-medium bg-green-900/30 px-2 py-1 rounded-lg border border-green-800/30">
                               <CheckCircle className="w-3 h-3" />
-                              <span>Saved</span>
+                              <span>Saved to Progress</span>
                             </div>
                           )}
                         </div>
 
-                        <p className="text-gray-600 text-sm mb-3">
+                        <p className="text-gray-400 text-sm mb-3">
                           {message.trainingPlan.description}
                         </p>
 
-                        <div className="text-xs text-gray-500 mb-4">
+                        <div className="text-xs text-gray-500 mb-4 bg-gray-800/50 p-2 rounded-lg inline-block border border-gray-700">
                           <span className="font-medium">Duration:</span>{" "}
                           {message.trainingPlan.duration}
                         </div>
@@ -613,14 +610,14 @@ export default function AIChat() {
                             (session, index) => (
                               <div
                                 key={index}
-                                className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg"
+                                className="flex items-center space-x-3 p-3 bg-gray-800 rounded-lg border border-gray-700"
                               >
                                 <div className="text-lg">
                                   {getTypeIcon(session.type)}
                                 </div>
                                 <div className="flex-1">
                                   <div className="flex items-center space-x-2 mb-1">
-                                    <span className="font-medium text-gray-800 text-sm">
+                                    <span className="font-medium text-white text-sm">
                                       {session.day}
                                     </span>
                                     <span
@@ -632,7 +629,7 @@ export default function AIChat() {
                                         session.type.slice(1)}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-gray-600 mb-1">
+                                  <p className="text-xs text-gray-400 mb-1">
                                     {session.description}
                                   </p>
                                   {session.duration !== "Rest" && (
@@ -657,7 +654,7 @@ export default function AIChat() {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-700/50">
                       <span className="text-xs opacity-75">
                         {message.timestamp.toLocaleTimeString([], {
                           hour: "2-digit",
@@ -673,7 +670,7 @@ export default function AIChat() {
 
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 text-gray-800 rounded-lg p-4 shadow-sm max-w-3xl">
+              <div className="bg-gray-800 text-gray-200 border border-gray-700 rounded-2xl p-4 shadow-sm max-w-3xl">
                 <div className="flex items-start space-x-3">
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                     <Bot className="w-4 h-4 text-white" />
@@ -698,7 +695,7 @@ export default function AIChat() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 p-6">
+        <div className="border-t border-gray-700 p-6 bg-gray-800">
           <div className="flex items-end space-x-4">
             <div className="flex-1">
               <textarea
@@ -707,8 +704,8 @@ export default function AIChat() {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Ask me about training plans, pacing, nutrition, or any running questions..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-                rows={3}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-white placeholder-gray-400"
+                rows={2}
                 disabled={isLoading}
               />
             </div>
@@ -722,7 +719,7 @@ export default function AIChat() {
             </button>
           </div>
 
-          <div className="mt-2 text-xs text-gray-500 text-center">
+          <div className="mt-2 text-xs text-gray-500 text-center italic">
             💡 Your conversations are saved locally. Ask follow-up questions and
             I'll remember our chat!
           </div>

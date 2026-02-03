@@ -1,4 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface StravaActivity {
   id: number;
@@ -29,9 +37,42 @@ interface StravaData {
   isCachedData?: boolean;
 }
 
+// Demo user ID
+const getCurrentUserId = (): string => {
+  return "123e4567-e89b-12d3-a456-426614174000";
+};
+
 export async function GET(request: NextRequest) {
+  const userId = getCurrentUserId();
+  const { searchParams } = new URL(request.url);
+  const forceRefresh = searchParams.get("force") === "true";
+
   try {
-    // Fetch current Strava data
+    // 1. Check if we have a recent summary in Firestore (unless force refresh)
+    if (!forceRefresh) {
+      const summaryRef = doc(db, "fitness_summaries", userId);
+      const summarySnap = await getDoc(summaryRef);
+
+      if (summarySnap.exists()) {
+        const data = summarySnap.data();
+        const lastUpdated = data.updated_at?.toDate() || new Date(0);
+        const now = new Date();
+        const daysSinceUpdate = (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24);
+
+        if (daysSinceUpdate < 7) {
+          console.log("Returning cached AI fitness summary (", daysSinceUpdate.toFixed(1), "days old )");
+          return NextResponse.json({
+            summary: data.summary,
+            dataSource: "cached_analysis",
+            lastUpdated: lastUpdated.toISOString(),
+            activityCount: data.activityCount || 0,
+            isFresh: false
+          });
+        }
+      }
+    }
+
+    // 2. Fetch current Strava data
     const stravaResponse = await fetch(
       `${request.nextUrl.origin}/api/strava/activities-cached`,
       {
@@ -43,26 +84,51 @@ export async function GET(request: NextRequest) {
     );
 
     if (!stravaResponse.ok) {
+      const status = stravaResponse.status;
+      let errorMessage = "Failed to fetch Strava data";
+      let summaryMessage = "Unable to generate fitness summary - Strava data unavailable";
+
+      if (status === 401) {
+        errorMessage = "Not connected to Strava";
+        summaryMessage = "Please connect your Strava account in Settings to see your fitness analysis.";
+      } else if (status === 404) {
+        errorMessage = "No synced data found";
+        summaryMessage = "Your Strava data hasn't been synced to the new database yet. Please click 'Sync' to import your activities.";
+      }
+
       return NextResponse.json(
         {
-          error: "Failed to fetch Strava data",
-          summary:
-            "Unable to generate fitness summary - Strava data unavailable",
+          error: errorMessage,
+          summary: summaryMessage,
+          status: status
         },
-        { status: 500 }
+        { status: status === 401 || status === 404 ? status : 500 }
       );
     }
 
     const stravaData: StravaData = await stravaResponse.json();
 
-    // Generate AI fitness summary
+    // 3. Generate new AI fitness summary
+    console.log("Generating NEW AI fitness summary...");
     const summary = await generateFitnessSummary(stravaData);
+
+    // 4. Save to Firestore
+    const summaryRef = doc(db, "fitness_summaries", userId);
+    const summaryData = {
+      user_id: userId,
+      summary: summary,
+      activityCount: stravaData.recentActivities?.length || 0,
+      updated_at: serverTimestamp(),
+    };
+
+    await setDoc(summaryRef, summaryData);
 
     return NextResponse.json({
       summary,
-      dataSource: stravaData.isCachedData ? "cached" : "live",
+      dataSource: stravaData.isCachedData ? "cached_strava" : "live_strava",
       lastUpdated: new Date().toISOString(),
       activityCount: stravaData.recentActivities?.length || 0,
+      isFresh: true
     });
   } catch (error) {
     console.error("Error generating fitness summary:", error);
@@ -79,39 +145,33 @@ export async function GET(request: NextRequest) {
 
 async function generateFitnessSummary(stravaData: StravaData): Promise<string> {
   try {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY not set");
+    }
+
     const { recentActivities, summary } = stravaData;
 
     // Prepare analysis data
     const analysisPrompt = createAnalysisPrompt(recentActivities, summary);
 
-    // Call Claude API for intelligent analysis
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-3-sonnet-20240229",
-        max_tokens: 300,
-        messages: [
-          {
-            role: "user",
-            content: analysisPrompt,
-          },
-        ],
-      }),
+    // Initialize Anthropic
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to get AI analysis");
-    }
+    const response = await anthropic.messages.create({
+      model: "claude-3-haiku-20240307",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: analysisPrompt }],
+    });
 
-    const data = await response.json();
-    return data.content[0].text;
+    const content = response.content[0];
+    if (content.type === 'text') {
+      return content.text;
+    }
+    return "Unable to generate textual summary.";
   } catch (error) {
-    console.error("Error calling Claude API:", error);
+    console.error("Error calling Anthropic API:", error);
     // Fallback to rule-based summary
     return generateRuleBasedSummary(stravaData);
   }
@@ -149,11 +209,10 @@ function createAnalysisPrompt(
 
 RECENT ACTIVITY DATA:
 - Total activities: ${totalRuns}
-- Last run: ${
-    recentActivity
+- Last run: ${recentActivity
       ? `${recentActivity.name} - ${recentActivity.distance}km in ${recentActivity.duration} (${recentActivity.pace}'/km pace)`
       : "No recent activity"
-  }
+    }
 - Runs this week: ${runsThisWeek}
 - Average pace (last 7 runs): ${avgPaceLast7.toFixed(1)}'/km
 - Average distance (last 7 runs): ${avgDistanceLast7.toFixed(1)}km
@@ -223,39 +282,31 @@ function generateRuleBasedSummary(stravaData: StravaData): string {
 
   return `🏃‍♂️ **Current Fitness Overview**
 
-You're showing ${consistencyNote} with ${totalRuns} total activities recorded. Your ${paceNote} at an average of ${
-    summary.avgPace
-  }'/km demonstrates ${
-    avgDistance >= 5 ? "strong" : "developing"
-  } endurance capacity.
+You're showing ${consistencyNote} with ${totalRuns} total activities recorded. Your ${paceNote} at an average of ${summary.avgPace
+    }'/km demonstrates ${avgDistance >= 5 ? "strong" : "developing"
+    } endurance capacity.
 
-**Recent Performance**: ${
-    recentActivity
-      ? `Your latest ${recentActivity.distance}km run in ${
-          recentActivity.duration
-        } shows ${
-          recentActivity.pace <= summary.avgPace ? "improved" : "consistent"
-        } pacing.`
+**Recent Performance**: ${recentActivity
+      ? `Your latest ${recentActivity.distance}km run in ${recentActivity.duration
+      } shows ${recentActivity.pace <= summary.avgPace ? "improved" : "consistent"
+      } pacing.`
       : "Ready for your next run!"
-  }
+    }
 
-**Training Focus**: You're ${distanceNote}, which is ${
-    avgDistance >= 5
+**Training Focus**: You're ${distanceNote}, which is ${avgDistance >= 5
       ? "excellent for building aerobic base"
       : "perfect for injury prevention and gradual progression"
-  }.
+    }.
 
 **Recommendations**: 
-- ${
-    runsThisWeek < 3
+- ${runsThisWeek < 3
       ? "Aim for 3-4 runs this week to build consistency"
       : "Maintain your current training frequency"
-  }
-- ${
-    summary.avgPace > 5.5
+    }
+- ${summary.avgPace > 5.5
       ? "Focus on easy conversational pace for 80% of runs"
       : "Consider adding one tempo session weekly"
-  }
+    }
 - Track your heart rate data to optimize training zones
 
 Keep up the momentum! Your dedication is building a strong foundation for long-term running success. 🎯`;

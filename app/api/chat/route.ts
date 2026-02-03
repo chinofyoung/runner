@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
 
 interface TrainingSession {
   day: string;
@@ -282,31 +283,30 @@ export async function POST(request: NextRequest) {
 
     const isTrainingPlanRequest = detectTrainingPlanRequest(message);
 
-    // Enhanced system prompt for training plan requests
     const systemPrompt = isTrainingPlanRequest
       ? `You are an expert AI running coach assistant named ChinoBot Coach. You specialize in creating personalized training plans.
-
-When creating training plans, structure your response clearly with:
-1. A brief introduction to the plan
-2. Weekly schedule with specific days, workout types, and descriptions
-3. Important training notes and tips
-
-For training plans, always include:
-- Monday through Sunday schedule
-- Workout types: easy, tempo, interval, long, rest
-- Specific distances and durations when possible
-- Clear descriptions of each workout
-
-Example format for training plans:
-Monday: Easy Run - 30-45 minutes, 5-7km easy pace
-Tuesday: Interval Training - 45 minutes with speed work
-Wednesday: Rest Day - Complete rest or light stretching
-Thursday: Tempo Run - 45 minutes at comfortably hard pace
-Friday: Rest Day - Easy cross-training optional
-Saturday: Long Run - 60-90 minutes at steady pace
-Sunday: Recovery Run - 30 minutes very easy pace
-
-Always be encouraging and provide practical, actionable advice.`
+        
+        When creating training plans, structure your response clearly with:
+        1. A brief introduction to the plan
+        2. Weekly schedule with specific days, workout types, and descriptions
+        3. Important training notes and tips
+        
+        For training plans, always include:
+        - Monday through Sunday schedule
+        - Workout types: easy, tempo, interval, long, rest
+        - Specific distances and durations when possible
+        - Clear descriptions of each workout
+        
+        Example format for training plans:
+        Monday: Easy Run - 30-45 minutes, 5-7km easy pace
+        Tuesday: Interval Training - 45 minutes with speed work
+        Wednesday: Rest Day - Complete rest or light stretching
+        Thursday: Tempo Run - 45 minutes at comfortably hard pace
+        Friday: Rest Day - Easy cross-training optional
+        Saturday: Long Run - 60-90 minutes at steady pace
+        Sunday: Recovery Run - 30 minutes very easy pace
+        
+        Always be encouraging and provide practical, actionable advice.`
       : `You are an expert AI running coach assistant named ChinoBot Coach. You specialize in:
         - Creating personalized training plans for 5K, 10K, Half Marathon, and Full Marathon distances
         - Providing pace guidance and workout recommendations
@@ -317,37 +317,28 @@ Always be encouraging and provide practical, actionable advice.`
         Always be encouraging, knowledgeable, and provide practical advice. Keep responses concise but helpful.
         Focus on actionable running advice tailored to the user's questions.`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 1500, // Increased for training plans
-        system: systemPrompt,
-        messages: [
-          ...conversationHistory,
-          {
-            role: "user",
-            content: message,
-          },
-        ],
-      }),
+    // Initialize Anthropic
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Claude API Error:", response.status, errorText);
-      throw new Error(
-        `Failed to get response from Claude: ${response.status} - ${errorText}`
-      );
-    }
+    // Convert conversation history to Anthropic format
+    const messages = conversationHistory.map((msg: any) => ({
+      role: msg.role === "assistant" ? "assistant" : "user",
+      content: msg.content,
+    }));
 
-    const data = await response.json();
-    const aiMessage = data.content[0].text;
+    // Add the current message
+    messages.push({ role: "user", content: message });
+
+    const response = await anthropic.messages.create({
+      model: "claude-3-haiku-20240307",
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: messages,
+    });
+
+    const aiMessage = response.content[0].type === 'text' ? response.content[0].text : "";
 
     // Try to parse training plan if this was a training plan request
     let trainingPlan: TrainingPlan | null = null;
@@ -360,7 +351,7 @@ Always be encouraging and provide practical, actionable advice.`
       trainingPlan,
     });
   } catch (error) {
-    console.error("Error calling Claude API:", error);
+    console.error("Error calling Anthropic API:", error);
     return NextResponse.json(
       { error: "Failed to get AI response" },
       { status: 500 }
