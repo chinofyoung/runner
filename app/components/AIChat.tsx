@@ -433,7 +433,7 @@ export default function AIChat() {
   };
 
   return (
-    <div className="flex h-full bg-gray-900 rounded-xl overflow-hidden shadow-xl border border-gray-700">
+    <div className="flex h-full bg-gray-900 sm:rounded-xl overflow-hidden sm:shadow-xl sm:border border-gray-700">
       {/* Conversation History Sidebar */}
       {showHistory && (
         <div className="w-80 border-r border-gray-700 bg-gray-800 flex flex-col">
@@ -705,7 +705,7 @@ export default function AIChat() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-700 p-6 bg-gray-800">
+        <div className="border-t border-gray-700 p-3 sm:p-6 bg-gray-800">
           <div className="flex items-end space-x-4">
             <div className="flex-1">
               <textarea

@@ -86,19 +86,18 @@ export async function GET(request: NextRequest) {
     const q = query(
       collection(db, "activities"),
       where("user_id", "==", userId),
-      where("type", "==", "Run"),
       where("start_date_local", ">=", twelveMonthsAgo.toISOString()),
       orderBy("start_date_local", "desc"),
       limit(500)
     );
 
     const querySnapshot = await getDocs(q);
-    const runningActivities = querySnapshot.docs.map(doc => ({
+    const allActivities = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as any[];
 
-    if (!runningActivities || runningActivities.length === 0) {
+    if (!allActivities || allActivities.length === 0) {
       return NextResponse.json({
         performanceData: [],
         weeklyData: [],
@@ -115,9 +114,12 @@ export async function GET(request: NextRequest) {
         isCachedData: true,
         connected: true,
         lastSync: userProfile.last_sync_at,
-        message: "No running activities found in the last 12 months",
+        message: "No activities found in the last 12 months",
       });
     }
+
+    // Filter runs for charts metrics
+    const runningActivities = allActivities.filter((a: any) => a.type === "Run");
 
     // Process data for monthly performance charts (last 12 months)
     const monthlyData = new Map();
@@ -231,7 +233,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Recent activities for dashboard (last 10)
-    const recentActivities = runningActivities
+    const recentActivities = allActivities
       .slice(0, 10)
       .map((activity: any) => {
         const activityDate = new Date(activity.start_date_local);

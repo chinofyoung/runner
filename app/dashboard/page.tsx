@@ -36,6 +36,7 @@ import {
   Check,
   ChevronUp,
   ChevronDown,
+  Filter,
 } from "lucide-react";
 import {
   BarChart,
@@ -126,33 +127,36 @@ const generateTrackingData = (stravaData: StravaData | null) => {
     ];
   }
 
-  // Use last 10 runs to show pace progression
-  const recentRuns = stravaData.recentActivities.slice(0, 10).reverse();
+  // Use last 10 activities to show pace progression (filter out activities with 0 pace)
+  const recentActivities = stravaData.recentActivities
+    .filter(a => a.pace > 0)
+    .slice(0, 10)
+    .reverse();
 
-  return recentRuns.map((run, index) => {
+  return recentActivities.map((activity, index) => {
     // Convert pace (min/km) to speed (km/h)
-    const speed = 60 / run.pace;
+    const speed = activity.pace > 0 ? 60 / activity.pace : 0;
 
     // Format date for display
-    const runDate = new Date(run.rawDate || run.date);
-    const dateLabel = runDate.toLocaleDateString("en", {
+    const activityDate = new Date(activity.rawDate || activity.date);
+    const dateLabel = activityDate.toLocaleDateString("en", {
       month: "short",
       day: "numeric",
     });
 
     // Truncate activity name for x-axis display
     const displayName =
-      run.name.length > 15 ? run.name.substring(0, 15) + "..." : run.name;
+      activity.name.length > 15 ? activity.name.substring(0, 15) + "..." : activity.name;
 
     return {
       activityName: displayName,
       speed: Math.round(speed * 10) / 10, // Round to 1 decimal
-      pace: run.pace,
-      distance: run.distance,
+      pace: activity.pace,
+      distance: activity.distance,
       date: dateLabel,
-      fullName: run.name,
-      heartrate: run.heartrate || null,
-      elevation: run.elevation || null,
+      fullName: activity.name,
+      heartrate: activity.heartrate || null,
+      elevation: activity.elevation || null,
     };
   });
 };
@@ -212,27 +216,28 @@ export default function Dashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [aiSummaryExpanded, setAiSummaryExpanded] = useState(false);
   const [expandedActivities, setExpandedActivities] = useState<{ [key: string]: boolean }>({});
+  const [activityTypeFilter, setActivityTypeFilter] = useState("All");
+  const [activityFilterOpen, setActivityFilterOpen] = useState(false);
 
   // Widget sizing and layout state
   const [isEditMode, setIsEditMode] = useState(false);
   const [widgetSizes, setWidgetSizes] = useState<{
     [key: string]: "small" | "medium" | "large";
   }>({
-    todaysActivity: "medium",
+
     metrics: "medium",
     todayTomorrow: "medium",
     aiSummary: "large",
     performanceChart: "large",
-    recentRuns: "medium",
+    recentActivities: "medium",
     zone2: "large",
   });
   const [widgetOrder, setWidgetOrder] = useState<string[]>([
-    "todaysActivity",
     "metrics",
     "todayTomorrow",
     "aiSummary",
     "performanceChart",
-    "recentRuns",
+    "recentActivities",
     "zone2",
   ]);
 
@@ -319,24 +324,23 @@ export default function Dashboard() {
 
         // Default configuration for new widgets
         const defaultSizes = {
-          todaysActivity: "medium",
+
           metrics: "medium",
           todayTomorrow: "medium",
           aiSummary: "large",
           performanceChart: "large",
           trainingPlan: "large",
-          recentRuns: "medium",
+          recentActivities: "medium",
           zone2: "large",
         };
 
         const defaultOrder = [
-          "todaysActivity",
           "metrics",
           "todayTomorrow",
           "aiSummary",
           "performanceChart",
           "trainingPlan",
-          "recentRuns",
+          "recentActivities",
           "zone2",
         ];
 
@@ -351,7 +355,15 @@ export default function Dashboard() {
           const missingWidgets = defaultOrder.filter(
             (widget) => !savedOrder.includes(widget)
           );
-          setWidgetOrder([...savedOrder, ...missingWidgets]);
+
+          // Migrate old recentRuns to recentActivities
+          const migratedOrder = savedOrder.map((id: string) => id === "recentRuns" ? "recentActivities" : id);
+          let finalOrder = [...migratedOrder];
+          if (!finalOrder.includes("recentActivities")) {
+            finalOrder = [...finalOrder, ...missingWidgets];
+          }
+
+          setWidgetOrder(finalOrder);
         }
       }
     } catch (error) {
@@ -361,23 +373,22 @@ export default function Dashboard() {
 
   const resetLayout = () => {
     setWidgetSizes({
-      todaysActivity: "medium",
+
       metrics: "medium",
       todayTomorrow: "medium",
       aiSummary: "large",
       performanceChart: "large",
       trainingPlan: "large",
-      recentRuns: "medium",
+      recentActivities: "medium",
       zone2: "large",
     });
     setWidgetOrder([
-      "todaysActivity",
       "metrics",
       "todayTomorrow",
       "aiSummary",
       "performanceChart",
       "trainingPlan",
-      "recentRuns",
+      "recentActivities",
       "zone2",
     ]);
   };
@@ -450,20 +461,7 @@ export default function Dashboard() {
     );
   };
 
-  const getTodaysActivity = () => {
-    if (
-      !stravaData?.recentActivities ||
-      stravaData.recentActivities.length === 0
-    ) {
-      return null;
-    }
 
-    const today = new Date().toDateString();
-    return stravaData.recentActivities.find((activity) => {
-      const activityDate = new Date(activity.rawDate || activity.date);
-      return activityDate.toDateString() === today;
-    });
-  };
 
   // Training plan state
   const [trainingPlanData, setTrainingPlanData] = useState<any>(null);
@@ -592,61 +590,10 @@ export default function Dashboard() {
       onDragEnd: handleDragEnd,
     });
 
-    const todaysActivity = getTodaysActivity();
+
 
     switch (widgetId) {
-      case "todaysActivity":
-        return (
-          <div key={widgetId} {...getWidgetProps(widgetId)}>
-            <WidgetResizeControls widgetId={widgetId} />
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-300">
-                Today's Activity
-              </h2>
-              <Calendar className="w-5 h-5 text-gray-400" />
-            </div>
-            {todaysActivity ? (
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-300">
-                    {todaysActivity.name}
-                  </h3>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                    <span>{todaysActivity.distance}km</span>
-                    <span>•</span>
-                    <span>{todaysActivity.duration}</span>
-                    <span>•</span>
-                    <span>{todaysActivity.pace}'/km</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-green-600">
-                    {todaysActivity.calories}
-                  </div>
-                  <div className="text-xs text-gray-500">calories</div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-3">
-                <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Activity className="w-6 h-6 text-gray-500" />
-                </div>
-                <h3 className="text-base font-medium text-gray-300 mb-2">
-                  No activity today yet
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Ready to get moving? Your next run is waiting!
-                </p>
-                <button className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors">
-                  Plan Today's Run
-                </button>
-              </div>
-            )}
-          </div>
-        );
+
 
       case "metrics":
         return (
@@ -1107,123 +1054,187 @@ export default function Dashboard() {
         );
 
 
-      case "recentRuns":
+      case "recentActivities":
+        // Filter logic for the Recent Activities widget
+        const allRecentActivities = stravaData?.recentActivities || [];
+        const filteredRecentActivities = allRecentActivities.filter((activity) => {
+          if (activityTypeFilter === "All") return true;
+          return activity.type === activityTypeFilter;
+        });
+
         return (
           <div key={widgetId} {...getWidgetProps(widgetId)}>
             <WidgetResizeControls widgetId={widgetId} />
             <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="font-semibold text-gray-300">Recent Runs</h3>
-                <p className="text-xs text-gray-500">
-                  {stravaConnected
-                    ? "Your latest activities"
-                    : "Connect Strava to see runs"}
-                </p>
+              <div className="flex items-center space-x-3">
+                <div>
+                  <h3 className="font-semibold text-gray-300">Recent Activities</h3>
+                  <p className="text-xs text-gray-500">
+                    {stravaConnected
+                      ? "Your latest sessions"
+                      : "Connect Strava to sync"}
+                  </p>
+                </div>
+                {/* Filter Dropdown - Click based for mobile support */}
+                <div className="relative z-10">
+                  <button
+                    onClick={() => setActivityFilterOpen(!activityFilterOpen)}
+                    className="flex items-center space-x-1 px-2 py-1 bg-gray-700/50 hover:bg-gray-700 rounded text-xs text-gray-300 transition-colors"
+                  >
+                    <Filter className="w-3 h-3" />
+                    <span>{activityTypeFilter}</span>
+                    <ChevronDown className={`w-3 h-3 ml-1 opacity-50 transition-transform ${activityFilterOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {activityFilterOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setActivityFilterOpen(false)} />
+                      <div className="absolute left-0 top-full mt-1 w-32 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-20">
+                        {["All", "Run", "Ride", "Hike", "Walk", "Swim"].map((type) => (
+                          <button
+                            key={type}
+                            onClick={() => {
+                              setActivityTypeFilter(type);
+                              setActivityFilterOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-700 transition-colors first:rounded-t-lg last:rounded-b-lg ${activityTypeFilter === type ? "text-green-400 font-medium" : "text-gray-300"
+                              }`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
+
               <button
                 onClick={() => router.push("/runs")}
-                className="text-green-500 text-xs font-medium hover:underline"
+                className="text-green-500 text-xs font-medium hover:underline flex items-center"
               >
-                View All →
+                View All <ChevronRight className="w-3 h-3 ml-0.5" />
               </button>
             </div>
-            {stravaData?.recentActivities &&
-              stravaData.recentActivities.length > 0 ? (
+
+            {filteredRecentActivities.length > 0 ? (
               <div className="space-y-3">
-                {stravaData.recentActivities.slice(0, 4).map((run) => (
+                {filteredRecentActivities.slice(0, 5).map((activity) => (
                   <div
-                    key={run.id}
-                    className="group p-3 rounded-lg border border-gray-700 hover:border-green-400 hover:bg-gray-700/50 transition-all cursor-pointer"
+                    key={activity.id}
+                    className={`flex flex-col p-3 rounded-lg border border-transparent transition-all ${activity.ai_analysis && expandedActivities[activity.id]
+                        ? "bg-gray-800 border-gray-700"
+                        : "bg-gray-700/30 hover:bg-gray-700/50 hover:border-gray-600"
+                      }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                        <Activity className="w-4 h-4 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-gray-200 text-sm truncate group-hover:text-green-400 transition-colors">
-                            {run.name}
-                          </h4>
-                          {!run.ai_analysis && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                analyzeActivity(run.id);
-                              }}
-                              disabled={analyzingActivityId === run.id}
-                              className="text-[10px] font-medium bg-gray-700 text-gray-300 px-2 py-0.5 rounded border border-gray-600 hover:bg-green-600 hover:text-white hover:border-green-500 transition-colors disabled:opacity-50"
-                            >
-                              {analyzingActivityId === run.id ? "Analyzing..." : "AI Analyze"}
-                            </button>
-                          )}
-                          {run.ai_analysis && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedActivities(prev => ({
-                                  ...prev,
-                                  [run.id]: !prev[run.id]
-                                }));
-                              }}
-                              className="text-[10px] font-medium bg-green-900/30 text-green-400 px-2 py-0.5 rounded border border-green-800/30 flex items-center space-x-1 hover:bg-green-800/40 transition-colors"
-                            >
-                              <span>AI Insights</span>
-                              {expandedActivities[run.id] ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
-                            </button>
-                          )}
+                    <div
+                      className="flex items-center justify-between w-full cursor-pointer"
+                      onClick={() => {
+                        if (activity.ai_analysis) {
+                          setExpandedActivities((prev) => ({
+                            ...prev,
+                            [activity.id]: !prev[activity.id],
+                          }));
+                        }
+                      }}
+                    >
+                      <div className="flex items-center space-x-3 overflow-hidden flex-1 min-w-0">
+                        {/* Activity Icon based on Type */}
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${activity.type === 'Run' ? 'bg-green-500/20 text-green-500' :
+                          activity.type === 'Ride' ? 'bg-blue-500/20 text-blue-500' :
+                            activity.type === 'Swim' ? 'bg-cyan-500/20 text-cyan-500' :
+                              activity.type === 'Hike' ? 'bg-orange-500/20 text-orange-500' :
+                                'bg-gray-600/20 text-gray-400'
+                          }`}>
+                          {activity.type === 'Run' ? <Activity className="w-5 h-5" /> :
+                            activity.type === 'Ride' ? <Activity className="w-5 h-5" /> :
+                              activity.type === 'Hike' ? <MapPin className="w-5 h-5" /> :
+                                <Activity className="w-5 h-5" />}
                         </div>
-                        <p className="text-xs text-gray-500 mb-1">{run.date}</p>
-                        <div className="flex items-center space-x-2 text-xs text-gray-400">
-                          <span>{run.distance}km</span>
-                          <span>•</span>
-                          <span>{run.duration}</span>
-                          <span>•</span>
-                          <span>{run.pace}'/km</span>
-                        </div>
-                        {run.ai_analysis && expandedActivities[run.id] && (
-                          <div className="mt-3 p-4 bg-gray-900 border-l-2 border-green-500 rounded-r-lg shadow-inner text-sm text-gray-200 animate-in fade-in slide-in-from-top-1 duration-200">
-                            <div className="flex items-start space-x-2">
-                              <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
-                              <p className="leading-relaxed italic">
-                                {run.ai_analysis}
-                              </p>
-                            </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center flex-wrap gap-2">
+                            <h4 className="font-medium text-gray-200 text-sm truncate max-w-[120px] sm:max-w-[150px]">
+                              {activity.name}
+                            </h4>
+
+                            {!activity.ai_analysis && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  analyzeActivity(activity.id);
+                                }}
+                                disabled={analyzingActivityId === activity.id}
+                                className="text-[10px] font-medium bg-gray-700 text-gray-300 px-2 py-0.5 rounded border border-gray-600 hover:bg-green-600 hover:text-white hover:border-green-500 transition-colors disabled:opacity-50"
+                              >
+                                {analyzingActivityId === activity.id ? "Analyzing..." : "AI Analyze"}
+                              </button>
+                            )}
+                            {activity.ai_analysis && (
+                              <span className="text-[10px] font-medium text-green-400 flex items-center bg-green-900/20 px-1.5 py-0.5 rounded">
+                                <Sparkles className="w-3 h-3 mr-1" />
+                                Insights
+                              </span>
+                            )}
                           </div>
+                          <div className="flex items-center space-x-2 text-xs text-gray-500">
+                            <span>{activity.type}</span>
+                            <span>•</span>
+                            <span>{activity.date}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3 text-right pl-2">
+                        <div className="hidden xs:block">
+                          <div className="text-sm font-bold text-white whitespace-nowrap">
+                            {activity.distance}km
+                          </div>
+                        </div>
+
+                        {activity.ai_analysis && (
+                          <ChevronDown
+                            className={`w-4 h-4 text-gray-500 transition-transform ${expandedActivities[activity.id] ? "rotate-180" : ""
+                              }`}
+                          />
                         )}
                       </div>
                     </div>
+
+                    {/* AI Analysis Dropdown Content */}
+                    {activity.ai_analysis && expandedActivities[activity.id] && (
+                      <div className="mt-3 p-3 sm:p-4 bg-gray-900 border-l-2 border-green-500 rounded-r-lg shadow-inner text-sm text-gray-200 animate-in fade-in slide-in-from-top-1 duration-200 cursor-text space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-start space-x-2">
+                            <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                            <div className="leading-relaxed italic text-gray-300">
+                              {activity.ai_analysis}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-gray-800">
+                          <div className="text-center">
+                            <div className="text-[10px] text-gray-500">Pace</div>
+                            <div className="text-xs font-medium text-gray-300">{activity.pace > 0 ? `${activity.pace}'/km` : '-'}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-[10px] text-gray-500">Duration</div>
+                            <div className="text-xs font-medium text-gray-300">{activity.duration}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-[10px] text-gray-500">Calories</div>
+                            <div className="text-xs font-medium text-gray-300">{activity.calories}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            ) : !stravaConnected ? (
-              <div className="text-center py-4">
-                <div className="w-10 h-10 bg-orange-100/10 rounded-full flex items-center justify-center mx-auto mb-2 text-orange-500">
-                  <Activity className="w-5 h-5" />
-                </div>
-                <h4 className="text-sm font-medium text-gray-300 mb-1">
-                  Connect Strava
-                </h4>
-                <p className="text-xs text-gray-600 mb-2">
-                  See your recent runs here
-                </p>
-                <button
-                  onClick={() => router.push("/settings")}
-                  className="bg-orange-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-orange-600 transition-colors"
-                >
-                  Connect →
-                </button>
-              </div>
             ) : (
-              <div className="text-center py-4">
-                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2 text-gray-500">
-                  <Activity className="w-5 h-5" />
-                </div>
-                <h4 className="text-sm font-medium text-gray-300 mb-1">
-                  No Recent Runs
-                </h4>
-                <p className="text-xs text-gray-600">
-                  Your activities will appear here
-                </p>
+              <div className="text-center py-8 bg-gray-800/50 rounded-xl border border-gray-700/50 border-dashed">
+                <Activity className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">No {activityTypeFilter !== 'All' ? activityTypeFilter.toLowerCase() : 'recent'} activities found</p>
               </div>
             )}
           </div>
@@ -1451,7 +1462,7 @@ export default function Dashboard() {
   }, [miniChatMessages]);
 
   const trackingData = generateTrackingData(stravaData);
-  const todaysActivity = getTodaysActivity();
+
 
   return (
     <div className="min-h-screen bg-gray-900">
