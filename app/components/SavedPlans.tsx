@@ -12,6 +12,12 @@ import {
   BookOpen,
   CheckCircle,
   Play,
+  Footprints,
+  Activity,
+  Zap,
+  Moon,
+  ClipboardList,
+  TrendingUp,
 } from "lucide-react";
 
 interface TrainingSession {
@@ -156,17 +162,17 @@ export default function SavedPlans({ onPlanSelected }: SavedPlansProps = {}) {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case "easy":
-        return "🚶‍♂️";
+        return <Footprints className="w-5 h-5" />;
       case "tempo":
-        return "🏃‍♂️";
+        return <Activity className="w-5 h-5" />;
       case "interval":
-        return "⚡";
+        return <Zap className="w-5 h-5" />;
       case "long":
-        return "🏃‍♀️";
+        return <TrendingUp className="w-5 h-5" />;
       case "rest":
-        return "😴";
+        return <Moon className="w-5 h-5" />;
       default:
-        return "🏃";
+        return <Activity className="w-5 h-5" />;
     }
   };
 
@@ -195,8 +201,8 @@ export default function SavedPlans({ onPlanSelected }: SavedPlansProps = {}) {
           <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-800 mb-2">
-            No Saved Training Plans
+          <h3 className="text-lg font-medium text-gray-800 mb-2 flex items-center justify-center">
+            <ClipboardList className="w-5 h-5 mr-2" /> No Saved Training Plans
           </h3>
           <p className="text-gray-600 mb-4 text-sm sm:text-base">
             You haven't saved any training plans yet. Ask the AI coach to create
@@ -242,11 +248,10 @@ export default function SavedPlans({ onPlanSelected }: SavedPlansProps = {}) {
         {plans.map((plan) => (
           <div
             key={plan.id}
-            className={`border rounded-lg ${
-              selectedPlanId === plan.id
-                ? "border-green-300 bg-green-50"
-                : "border-gray-200"
-            }`}
+            className={`border rounded-lg ${selectedPlanId === plan.id
+              ? "border-green-300 bg-green-50"
+              : "border-gray-200"
+              }`}
           >
             {/* Plan Header */}
             <div className="p-3 sm:p-4 border-b border-gray-100 bg-gray-50">
@@ -278,11 +283,10 @@ export default function SavedPlans({ onPlanSelected }: SavedPlansProps = {}) {
                     <button
                       onClick={() => selectPlan(plan.id)}
                       disabled={selectingPlan === plan.id}
-                      className={`flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg transition-colors text-sm ${
-                        selectingPlan === plan.id
-                          ? "bg-blue-300 text-blue-700 cursor-not-allowed"
-                          : "bg-blue-500 text-white hover:bg-blue-600"
-                      }`}
+                      className={`flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg transition-colors text-sm ${selectingPlan === plan.id
+                        ? "bg-blue-300 text-blue-700 cursor-not-allowed"
+                        : "bg-blue-500 text-white hover:bg-blue-600"
+                        }`}
                     >
                       <Play className="w-4 h-4" />
                       <span className="hidden sm:inline">
@@ -327,7 +331,7 @@ export default function SavedPlans({ onPlanSelected }: SavedPlansProps = {}) {
                       className="flex items-center justify-between p-2 sm:p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                        <div className="text-lg sm:text-2xl flex-shrink-0">
+                        <div className="text-lg sm:text-2xl flex-shrink-0 text-gray-400">
                           {getTypeIcon(session.type)}
                         </div>
                         <div className="flex-1 min-w-0">

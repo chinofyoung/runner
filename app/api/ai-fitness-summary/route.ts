@@ -61,8 +61,21 @@ export async function GET(request: NextRequest) {
 
         if (daysSinceUpdate < 7) {
           console.log("Returning cached AI fitness summary (", daysSinceUpdate.toFixed(1), "days old )");
+
+          let cleanedSummary = data.summary;
+          const introPatterns = [
+            /^Here is a \d+-word analysis and encouraging summary for the runner:\s*/i,
+            /^Based on the provided data, here is an analysis of your fitness:\s*/i,
+            /^Here is an analysis of your recent fitness data:\s*/i,
+            /^Analysis of your fitness data:\s*/i
+          ];
+
+          for (const pattern of introPatterns) {
+            cleanedSummary = cleanedSummary.replace(pattern, "");
+          }
+
           return NextResponse.json({
-            summary: data.summary,
+            summary: cleanedSummary.trim(),
             dataSource: "cached_analysis",
             lastUpdated: lastUpdated.toISOString(),
             activityCount: data.activityCount || 0,
@@ -167,7 +180,21 @@ async function generateFitnessSummary(stravaData: StravaData): Promise<string> {
 
     const content = response.content[0];
     if (content.type === 'text') {
-      return content.text;
+      let cleanedText = content.text;
+
+      // Remove common introductory phrases
+      const introPatterns = [
+        /^Here is a \d+-word analysis and encouraging summary for the runner:\s*/i,
+        /^Based on the provided data, here is an analysis of your fitness:\s*/i,
+        /^Here is an analysis of your recent fitness data:\s*/i,
+        /^Analysis of your fitness data:\s*/i
+      ];
+
+      for (const pattern of introPatterns) {
+        cleanedText = cleanedText.replace(pattern, "");
+      }
+
+      return cleanedText.trim();
     }
     return "Unable to generate textual summary.";
   } catch (error) {
@@ -228,6 +255,8 @@ Please provide:
 2. Recent training trends and patterns
 3. Actionable recommendations for the next week
 4. Motivational insight
+
+IMPORTANT: Start your response directly with the analysis. Do not include any introductory text, conversational preamble, or phrases like "Here is a summary" or "Based on the data". Go straight to the content.
 
 Keep it personal, specific, and actionable. Focus on positive reinforcement while providing valuable coaching insights.`;
 }

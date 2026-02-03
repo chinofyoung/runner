@@ -24,6 +24,18 @@ import {
   CheckCircle,
   AlertCircle,
   Menu,
+  Move,
+  Zap,
+  Moon,
+  AlertTriangle,
+  Sparkles,
+  RefreshCw,
+  Trophy,
+  Dumbbell,
+  ClipboardList,
+  Check,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import {
   BarChart,
@@ -36,8 +48,6 @@ import {
   Tooltip,
 } from "recharts";
 import AIChat from "../components/AIChat";
-import TrainingPlan from "../components/TrainingPlan";
-import SavedPlans from "../components/SavedPlans";
 import Zone2RunsWidget from "../components/Zone2RunsWidget";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -199,7 +209,9 @@ export default function Dashboard() {
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncMessage, setSyncMessage] = useState("");
-  const [trainingPlanRefresh, setTrainingPlanRefresh] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [aiSummaryExpanded, setAiSummaryExpanded] = useState(false);
+  const [expandedActivities, setExpandedActivities] = useState<{ [key: string]: boolean }>({});
 
   // Widget sizing and layout state
   const [isEditMode, setIsEditMode] = useState(false);
@@ -211,7 +223,6 @@ export default function Dashboard() {
     todayTomorrow: "medium",
     aiSummary: "large",
     performanceChart: "large",
-    trainingPlan: "large",
     recentRuns: "medium",
     zone2: "large",
   });
@@ -221,7 +232,6 @@ export default function Dashboard() {
     "todayTomorrow",
     "aiSummary",
     "performanceChart",
-    "trainingPlan",
     "recentRuns",
     "zone2",
   ]);
@@ -422,61 +432,20 @@ export default function Dashboard() {
 
   const WidgetResizeControls = ({
     widgetId,
-    currentSize,
   }: {
     widgetId: string;
-    currentSize: "small" | "medium" | "large";
   }) => {
     if (!isEditMode) return null;
 
     return (
-      <div className="absolute top-2 right-2 flex items-center space-x-1 bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-1">
+      <div className="absolute top-2 right-2 flex items-center bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-1">
         {/* Drag Handle */}
         <div
-          className="w-6 h-6 rounded text-xs font-medium bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors cursor-move flex items-center justify-center"
+          className="w-10 h-10 rounded text-lg font-medium bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors cursor-move flex items-center justify-center animate-pulse"
           title="Drag to reorder"
         >
           ⋮⋮
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            updateWidgetSize(widgetId, "small");
-          }}
-          className={`w-6 h-6 rounded text-xs font-medium transition-colors ${currentSize === "small"
-            ? "bg-green-500 text-white"
-            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          title="1/3 width"
-        >
-          S
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            updateWidgetSize(widgetId, "medium");
-          }}
-          className={`w-6 h-6 rounded text-xs font-medium transition-colors ${currentSize === "medium"
-            ? "bg-green-500 text-white"
-            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          title="1/2 width"
-        >
-          M
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            updateWidgetSize(widgetId, "large");
-          }}
-          className={`w-6 h-6 rounded text-xs font-medium transition-colors ${currentSize === "large"
-            ? "bg-green-500 text-white"
-            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          title="Full width"
-        >
-          L
-        </button>
       </div>
     );
   };
@@ -613,8 +582,7 @@ export default function Dashboard() {
     const getWidgetProps = (widgetId: string) => ({
       className: getWidgetClasses(widgetId),
       style: {
-        gridColumnEnd: `span ${getWidgetSpan(widgetSizes[widgetId])}`,
-        // Remove fixed row spans to let content determine height
+        // Widgets now stack in a single column
       },
       draggable: isEditMode,
       onDragStart: (e: React.DragEvent) => handleDragStart(e, widgetId),
@@ -630,10 +598,7 @@ export default function Dashboard() {
       case "todaysActivity":
         return (
           <div key={widgetId} {...getWidgetProps(widgetId)}>
-            <WidgetResizeControls
-              widgetId={widgetId}
-              currentSize={widgetSizes[widgetId]}
-            />
+            <WidgetResizeControls widgetId={widgetId} />
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-gray-300">
                 Today's Activity
@@ -643,7 +608,7 @@ export default function Dashboard() {
             {todaysActivity ? (
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold">🏃</span>
+                  <Activity className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-300">
@@ -667,7 +632,7 @@ export default function Dashboard() {
             ) : (
               <div className="text-center py-3">
                 <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-xl">🏃‍♂️</span>
+                  <Activity className="w-6 h-6 text-gray-500" />
                 </div>
                 <h3 className="text-base font-medium text-gray-300 mb-2">
                   No activity today yet
@@ -686,10 +651,7 @@ export default function Dashboard() {
       case "metrics":
         return (
           <div key={widgetId} {...getWidgetProps(widgetId)}>
-            <WidgetResizeControls
-              widgetId={widgetId}
-              currentSize={widgetSizes[widgetId]}
-            />
+            <WidgetResizeControls widgetId={widgetId} />
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-gray-300">
                 Key Metrics
@@ -751,26 +713,23 @@ export default function Dashboard() {
         const getTypeIcon = (type: string) => {
           switch (type) {
             case "easy":
-              return "🚶‍♂️";
+              return <Footprints className="w-5 h-5" />;
             case "tempo":
-              return "🏃‍♂️";
+              return <Activity className="w-5 h-5" />;
             case "interval":
-              return "⚡";
+              return <Zap className="w-5 h-5" />;
             case "long":
-              return "🏃‍♀️";
+              return <TrendingUp className="w-5 h-5" />;
             case "rest":
-              return "😴";
+              return <Moon className="w-5 h-5" />;
             default:
-              return "🏃";
+              return <Activity className="w-5 h-5" />;
           }
         };
 
         return (
           <div key={widgetId} {...getWidgetProps(widgetId)}>
-            <WidgetResizeControls
-              widgetId={widgetId}
-              currentSize={widgetSizes[widgetId]}
-            />
+            <WidgetResizeControls widgetId={widgetId} />
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-gray-300">
                 Training Schedule
@@ -802,7 +761,7 @@ export default function Dashboard() {
                   </div>
                   {today ? (
                     <div className="flex items-center space-x-3">
-                      <div className="text-lg">{getTypeIcon(today.type)}</div>
+                      <div className="text-lg text-gray-400">{getTypeIcon(today.type)}</div>
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1">
                           <span
@@ -814,8 +773,8 @@ export default function Dashboard() {
                               today.type.slice(1)}
                           </span>
                           {today.completed && (
-                            <span className="text-xs text-green-600 font-medium">
-                              ✓ Completed
+                            <span className="text-xs text-green-600 font-medium flex items-center">
+                              <Check className="w-3 h-3 mr-1" /> Completed
                             </span>
                           )}
                         </div>
@@ -854,7 +813,7 @@ export default function Dashboard() {
                   </div>
                   {tomorrow ? (
                     <div className="flex items-center space-x-3">
-                      <div className="text-lg">
+                      <div className="text-lg text-gray-400">
                         {getTypeIcon(tomorrow.type)}
                       </div>
                       <div className="flex-1">
@@ -897,17 +856,14 @@ export default function Dashboard() {
       case "aiSummary":
         return (
           <div key={widgetId} {...getWidgetProps(widgetId)}>
-            <WidgetResizeControls
-              widgetId={widgetId}
-              currentSize={widgetSizes[widgetId]}
-            />
+            <WidgetResizeControls widgetId={widgetId} />
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <h2 className="text-lg font-semibold text-gray-300">
                   AI Fitness Analysis
                 </h2>
                 <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">AI</span>
+                  <Bot className="w-3.5 h-3.5 text-white" />
                 </div>
               </div>
               <div className="flex items-center space-x-2">
@@ -922,126 +878,148 @@ export default function Dashboard() {
                   </span>
                 )}
                 <button
+                  onClick={() => setAiSummaryExpanded(!aiSummaryExpanded)}
+                  className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
+                  title={aiSummaryExpanded ? "Collapse" : "Expand"}
+                >
+                  {aiSummaryExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                <button
                   onClick={() => fetchAISummary(true)}
                   disabled={aiSummaryLoading}
                   className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors border border-gray-700 disabled:opacity-50"
                   title="Force re-analyze (Minimizes token use)"
                 >
-                  <svg
-                    className={`w-4 h-4 ${aiSummaryLoading ? "animate-spin" : ""
-                      }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
+                  <RefreshCw className={`w-4 h-4 ${aiSummaryLoading ? "animate-spin" : ""}`} />
                 </button>
               </div>
             </div>
 
-            {aiSummaryLoading ? (
-              <div className="animate-pulse space-y-3">
-                <div className="h-4 bg-gray-700 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-700 rounded w-1/2"></div>
-                <div className="h-4 bg-gray-700 rounded w-5/6"></div>
-                <div className="h-4 bg-gray-700 rounded w-2/3"></div>
-                <div className="space-y-2 mt-4">
-                  <div className="h-3 bg-gray-700 rounded w-full"></div>
-                  <div className="h-3 bg-gray-700 rounded w-4/5"></div>
-                  <div className="h-3 bg-gray-700 rounded w-3/5"></div>
-                </div>
-              </div>
-            ) : aiSummaryError ? (
-              <div className="text-center py-6">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-red-500 text-xl">⚠️</span>
-                </div>
-                <h3 className="text-base font-medium text-gray-300 mb-2">
-                  Analysis Unavailable
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">{aiSummaryError}</p>
+            {!aiSummaryExpanded && aiSummaryData?.summary && !aiSummaryLoading && !aiSummaryError && (
+              <div className="prose prose-sm max-w-none">
+                <div
+                  className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm"
+                  dangerouslySetInnerHTML={{
+                    __html: (aiSummaryData.summary.split(/\s+/).slice(0, 100).join(" ") + (aiSummaryData.summary.split(/\s+/).length > 100 ? "..." : ""))
+                      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+                      .replace(
+                        /🏃‍♂️|🎯|💪|⚡|🔥|✅/g,
+                        '<span class="text-lg">$&</span>'
+                      ),
+                  }}
+                />
                 <button
-                  onClick={() => fetchAISummary(false)}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                  onClick={() => setAiSummaryExpanded(true)}
+                  className="mt-3 flex items-center space-x-1 text-purple-400 hover:text-purple-300 transition-colors text-xs font-medium"
                 >
-                  Try Again
+                  <span>Read full analysis</span>
+                  <ChevronDown className="w-3 h-3" />
                 </button>
               </div>
-            ) : aiSummaryData?.summary ? (
-              <div className="space-y-4">
-                <div className="prose prose-sm max-w-none">
-                  <div
-                    className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm"
-                    dangerouslySetInnerHTML={{
-                      __html: aiSummaryData.summary
-                        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                        .replace(/\*(.*?)\*/g, "<em>$1</em>")
-                        .replace(
-                          /🏃‍♂️|🎯|💪|⚡|🔥|✅/g,
-                          '<span class="text-lg">$&</span>'
-                        ),
-                    }}
-                  />
-                </div>
+            )}
 
-                {/* Summary Stats */}
-                <div className="mt-4 p-3 bg-slate-700 rounded-lg border border-slate-500">
-                  <div className="grid grid-cols-2 gap-4 text-center">
-                    <div>
-                      <div className="text-lg font-bold text-white">
-                        {aiSummaryData.activityCount || 0}
-                      </div>
-                      <div className="text-xs text-white">
-                        Activities Analyzed
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-white">
-                        {aiSummaryData.lastUpdated
-                          ? new Date(
-                            aiSummaryData.lastUpdated
-                          ).toLocaleDateString()
-                          : "Today"}
-                      </div>
-                      <div className="text-xs text-white">
-                        Last Updated
-                      </div>
+            {aiSummaryExpanded && (
+              <>
+                {aiSummaryLoading ? (
+                  <div className="animate-pulse space-y-3">
+                    <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+                    <div className="h-4 bg-gray-700 rounded w-5/6"></div>
+                    <div className="h-4 bg-gray-700 rounded w-2/3"></div>
+                    <div className="space-y-2 mt-4">
+                      <div className="h-3 bg-gray-700 rounded w-full"></div>
+                      <div className="h-3 bg-gray-700 rounded w-4/5"></div>
+                      <div className="h-3 bg-gray-700 rounded w-3/5"></div>
                     </div>
                   </div>
-                </div>
-
-                {/* Powered by AI notice */}
-                <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 mt-3">
-                  <div className="w-4 h-4 bg-purple-400 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">✨</span>
+                ) : aiSummaryError ? (
+                  <div className="text-center py-6">
+                    <div className="w-12 h-12 bg-red-100/10 rounded-full flex items-center justify-center mx-auto mb-3 text-red-500">
+                      <AlertTriangle className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-medium text-gray-300 mb-2">
+                      Analysis Unavailable
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4">{aiSummaryError}</p>
+                    <button
+                      onClick={() => fetchAISummary(false)}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                    >
+                      Try Again
+                    </button>
                   </div>
-                  <span>Powered by AI analysis of your Strava data</span>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-xl">🤖</span>
-                </div>
-                <h3 className="text-base font-medium text-gray-300 mb-2">
-                  No Analysis Available
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Connect your Strava account to get AI-powered fitness insights
-                </p>
-                <button
-                  onClick={() => (window.location.href = "/settings")}
-                  className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
-                >
-                  Connect Strava
-                </button>
-              </div>
+                ) : aiSummaryData?.summary ? (
+                  <div className="space-y-4">
+                    <div className="prose prose-sm max-w-none">
+                      <div
+                        className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm"
+                        dangerouslySetInnerHTML={{
+                          __html: aiSummaryData.summary
+                            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                            .replace(/\*(.*?)\*/g, "<em>$1</em>")
+                            .replace(
+                              /🏃‍♂️|🎯|💪|⚡|🔥|✅/g,
+                              '<span class="text-lg">$&</span>'
+                            ),
+                        }}
+                      />
+                    </div>
+
+                    {/* Summary Stats */}
+                    <div className="mt-4 p-3 bg-slate-700 rounded-lg border border-slate-500">
+                      <div className="grid grid-cols-2 gap-4 text-center">
+                        <div>
+                          <div className="text-lg font-bold text-white">
+                            {aiSummaryData.activityCount || 0}
+                          </div>
+                          <div className="text-xs text-white">
+                            Activities Analyzed
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-lg font-bold text-white">
+                            {aiSummaryData.lastUpdated
+                              ? new Date(
+                                aiSummaryData.lastUpdated
+                              ).toLocaleDateString()
+                              : "Today"}
+                          </div>
+                          <div className="text-xs text-white">
+                            Last Updated
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Powered by AI notice */}
+                    <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 mt-3">
+                      <div className="w-4 h-4 bg-purple-400 rounded-full flex items-center justify-center">
+                        <Sparkles className="w-2.5 h-2.5 text-white" />
+                      </div>
+                      <span>Powered by AI analysis of your Strava data</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400">
+                      <Bot className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-medium text-gray-300 mb-2">
+                      No Analysis Available
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Connect your Strava account to get AI-powered fitness insights
+                    </p>
+                    <button
+                      onClick={() => (window.location.href = "/settings")}
+                      className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
+                    >
+                      Connect Strava
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         );
@@ -1049,10 +1027,7 @@ export default function Dashboard() {
       case "performanceChart":
         return (
           <div key={widgetId} {...getWidgetProps(widgetId)}>
-            <WidgetResizeControls
-              widgetId={widgetId}
-              currentSize={widgetSizes[widgetId]}
-            />
+            <WidgetResizeControls widgetId={widgetId} />
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-300">
@@ -1131,29 +1106,11 @@ export default function Dashboard() {
           </div>
         );
 
-      case "trainingPlan":
-        return (
-          <div
-            key={widgetId}
-            {...getWidgetProps(widgetId)}
-            className={`${getWidgetClasses(widgetId)} ${isEditMode ? "rounded-2xl" : ""
-              }`}
-          >
-            <WidgetResizeControls
-              widgetId={widgetId}
-              currentSize={widgetSizes[widgetId]}
-            />
-            <TrainingPlan refreshTrigger={trainingPlanRefresh} />
-          </div>
-        );
 
       case "recentRuns":
         return (
           <div key={widgetId} {...getWidgetProps(widgetId)}>
-            <WidgetResizeControls
-              widgetId={widgetId}
-              currentSize={widgetSizes[widgetId]}
-            />
+            <WidgetResizeControls widgetId={widgetId} />
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="font-semibold text-gray-300">Recent Runs</h3>
@@ -1180,7 +1137,7 @@ export default function Dashboard() {
                   >
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                        <span className="text-white text-xs">🏃</span>
+                        <Activity className="w-4 h-4 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -1200,9 +1157,19 @@ export default function Dashboard() {
                             </button>
                           )}
                           {run.ai_analysis && (
-                            <span className="text-[10px] font-medium bg-green-900/30 text-green-400 px-2 py-0.5 rounded border border-green-800/30">
-                              Analyzed
-                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedActivities(prev => ({
+                                  ...prev,
+                                  [run.id]: !prev[run.id]
+                                }));
+                              }}
+                              className="text-[10px] font-medium bg-green-900/30 text-green-400 px-2 py-0.5 rounded border border-green-800/30 flex items-center space-x-1 hover:bg-green-800/40 transition-colors"
+                            >
+                              <span>AI Insights</span>
+                              {expandedActivities[run.id] ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                            </button>
                           )}
                         </div>
                         <p className="text-xs text-gray-500 mb-1">{run.date}</p>
@@ -1213,9 +1180,14 @@ export default function Dashboard() {
                           <span>•</span>
                           <span>{run.pace}'/km</span>
                         </div>
-                        {run.ai_analysis && (
-                          <div className="mt-2 p-2 bg-gray-900/50 rounded-lg border border-gray-700 text-[10px] text-gray-300 italic line-clamp-2">
-                            ✨ {run.ai_analysis}
+                        {run.ai_analysis && expandedActivities[run.id] && (
+                          <div className="mt-3 p-4 bg-gray-900 border-l-2 border-green-500 rounded-r-lg shadow-inner text-sm text-gray-200 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="flex items-start space-x-2">
+                              <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                              <p className="leading-relaxed italic">
+                                {run.ai_analysis}
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1225,8 +1197,8 @@ export default function Dashboard() {
               </div>
             ) : !stravaConnected ? (
               <div className="text-center py-4">
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-base">🏃‍♂️</span>
+                <div className="w-10 h-10 bg-orange-100/10 rounded-full flex items-center justify-center mx-auto mb-2 text-orange-500">
+                  <Activity className="w-5 h-5" />
                 </div>
                 <h4 className="text-sm font-medium text-gray-300 mb-1">
                   Connect Strava
@@ -1243,8 +1215,8 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="text-center py-4">
-                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-base">🏃‍♂️</span>
+                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2 text-gray-500">
+                  <Activity className="w-5 h-5" />
                 </div>
                 <h4 className="text-sm font-medium text-gray-300 mb-1">
                   No Recent Runs
@@ -1260,10 +1232,7 @@ export default function Dashboard() {
       case "zone2":
         return (
           <div key={widgetId} {...getWidgetProps(widgetId)}>
-            <WidgetResizeControls
-              widgetId={widgetId}
-              currentSize={widgetSizes[widgetId]}
-            />
+            <WidgetResizeControls widgetId={widgetId} />
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="font-semibold text-gray-300">
@@ -1489,71 +1458,32 @@ export default function Dashboard() {
       {/* Navigation Header */}
       <header className="bg-gray-800 shadow-sm border-b border-gray-700 px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center space-x-4 sm:space-x-8">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">Cb</span>
-              </div>
-              <span className="font-bold text-xl text-white">ChinoBot</span>
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">Cb</span>
             </div>
-
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex space-x-6">
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="flex items-center space-x-2 font-medium text-green-400"
-              >
-                <Activity className="w-5 h-5" />
-                <span>Dashboard</span>
-              </button>
-              <button
-                onClick={() => router.push("/progress")}
-                className="flex items-center space-x-2 font-medium text-gray-400 hover:text-gray-200"
-              >
-                <BarChart3 className="w-5 h-5" />
-                <span>Progress</span>
-              </button>
-              <button
-                onClick={() => router.push("/chat")}
-                className="flex items-center space-x-2 font-medium text-gray-400 hover:text-gray-200"
-              >
-                <MessageSquare className="w-5 h-5" />
-                <span>AI Coach</span>
-              </button>
-              <button
-                onClick={() => router.push("/settings")}
-                className="flex items-center space-x-2 font-medium text-gray-400 hover:text-gray-200"
-              >
-                <Settings className="w-5 h-5" />
-                <span>Settings</span>
-              </button>
-            </nav>
+            <span className="font-bold text-xl text-white">ChinoBot</span>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Desktop Search */}
-            <div className="relative hidden sm:block">
-              <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search here..."
-                className="pl-10 pr-4 py-2 bg-gray-700 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-green-500 w-48 lg:w-64 text-white placeholder-gray-400"
-              />
-            </div>
-
-            {/* AI Chat Button (Mobile) */}
+          <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowAIPopup(true)}
-              className="md:hidden p-2 text-green-400 hover:text-green-300 bg-gray-700 rounded-lg"
+              className="p-2 text-green-400 hover:text-green-300 bg-gray-700 rounded-lg"
             >
               <MessageCircle className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 text-gray-400 hover:text-gray-200 bg-gray-700/50 rounded-lg"
+            >
+              <Menu className="w-6 h-6" />
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+      <main className="px-4 py-6 pb-24">
         {loading ? (
           /* Single Elegant Loader */
           <div className="flex items-center justify-center min-h-[60vh]">
@@ -1628,58 +1558,29 @@ export default function Dashboard() {
               {/* Layout Controls */}
               <div className="flex items-center space-x-3">
                 {isEditMode ? (
-                  <>
-                    <button
-                      onClick={resetLayout}
-                      className="px-4 py-2 text-gray-300 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-                    >
-                      Reset
-                    </button>
+                  <div className="flex items-center space-x-2">
                     <button
                       onClick={() => setIsEditMode(false)}
-                      className="px-4 py-2 text-gray-300 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+                      className="p-2 text-gray-400 hover:text-white bg-gray-800 border border-gray-700 rounded-lg transition-colors"
+                      title="Cancel"
                     >
-                      Cancel
+                      <X className="w-5 h-5" />
                     </button>
                     <button
                       onClick={saveLayout}
-                      className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium flex items-center space-x-2"
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors text-sm font-bold flex items-center space-x-2 shadow-lg shadow-green-900/20"
                     >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span>Save Layout</span>
+                      <span>Save</span>
                     </button>
-                  </>
+                  </div>
                 ) : (
                   <button
                     onClick={() => setIsEditMode(true)}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium flex items-center space-x-2"
+                    className="p-2.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-600/30 transition-all flex items-center space-x-2 group"
+                    title="Rearrange Dashboard"
                   >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                    <span>Edit Layout</span>
+                    <Move className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Rearrange</span>
                   </button>
                 )}
               </div>
@@ -1722,18 +1623,17 @@ export default function Dashboard() {
                   </span>
                 </div>
                 <p className="text-blue-300 text-sm mt-1">
-                  Drag widgets using the ⋮⋮ handle to reorder them, or use S/M/L
-                  buttons to resize. Click Save Layout when done.
+                  Drag widgets using the handle (⋮⋮) to reorder your dashboard. Click Save when you're happy with the new order.
                 </p>
               </div>
             )}
 
             {/* Dashboard Content - Masonry Grid */}
             <div
-              className={`grid gap-4 sm:gap-6 ${isEditMode ? "transition-all duration-300" : ""
+              className={`grid gap-4 ${isEditMode ? "transition-all duration-300" : ""
                 }`}
               style={{
-                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                gridTemplateColumns: "1fr",
                 gridAutoRows: "auto",
                 gridAutoFlow: "row",
               }}
@@ -1852,6 +1752,39 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      {/* Mobile Bottom Navigation */}
+      <footer className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[540px] bg-gray-800 border-t border-gray-700 px-6 py-3 z-50">
+        <nav className="flex items-center justify-between">
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex flex-col items-center space-y-1 text-green-400"
+          >
+            <Activity className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Dashboard</span>
+          </button>
+          <button
+            onClick={() => router.push("/progress")}
+            className="flex flex-col items-center space-y-1 text-gray-400 hover:text-gray-200"
+          >
+            <BarChart3 className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Progress</span>
+          </button>
+          <button
+            onClick={() => router.push("/chat")}
+            className="flex flex-col items-center space-y-1 text-gray-400 hover:text-gray-200"
+          >
+            <MessageSquare className="w-6 h-6" />
+            <span className="text-[10px] font-medium">AI Coach</span>
+          </button>
+          <button
+            onClick={() => router.push("/settings")}
+            className="flex flex-col items-center space-y-1 text-gray-400 hover:text-gray-200"
+          >
+            <Settings className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Settings</span>
+          </button>
+        </nav>
+      </footer>
     </div>
   );
 }

@@ -35,9 +35,11 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-gray-900 min-h-screen overflow-x-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-black min-h-screen flex justify-center`}
       >
-        {children}
+        <div className="w-full max-w-[540px] bg-gray-900 min-h-screen shadow-2xl relative overflow-x-hidden">
+          {children}
+        </div>
       </body>
     </html>
   );

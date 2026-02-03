@@ -11,6 +11,15 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
+  BarChart3,
+  MessageSquare,
+  Settings,
+  Trophy,
+  Dumbbell,
+  Sparkles,
+  Check,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -52,6 +61,7 @@ export default function AllRunsPage() {
   const [summary, setSummary] = useState<StravaData["summary"] | null>(null);
   const [isCachedData, setIsCachedData] = useState(false);
   const [analyzingActivityId, setAnalyzingActivityId] = useState<number | null>(null);
+  const [expandedActivities, setExpandedActivities] = useState<{ [key: number]: boolean }>({});
 
   const analyzeActivity = async (activityId: number) => {
     try {
@@ -137,13 +147,13 @@ export default function AllRunsPage() {
   const getRunTypeIcon = (type: string) => {
     switch (type?.toLowerCase()) {
       case "run":
-        return "🏃‍♂️";
+        return <Activity className="w-5 h-5" />;
       case "race":
-        return "🏆";
+        return <Trophy className="w-5 h-5 text-yellow-500" />;
       case "workout":
-        return "💪";
+        return <Dumbbell className="w-5 h-5 text-orange-500" />;
       default:
-        return "🏃‍♂️";
+        return <Activity className="w-5 h-5" />;
     }
   };
 
@@ -162,8 +172,8 @@ export default function AllRunsPage() {
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Header */}
-      <header className="bg-gray-800 shadow-sm border-b border-gray-700 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+      <header className="bg-gray-800 shadow-sm border-b border-gray-700 fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[540px] z-50">
+        <div className="px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
@@ -173,18 +183,13 @@ export default function AllRunsPage() {
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-white">
+                <h1 className="text-xl font-bold text-white">
                   All Runs
                 </h1>
-                <p className="text-sm text-gray-400">
+                <p className="text-xs text-gray-400">
                   {loading
                     ? "Loading..."
-                    : `${allRuns.length} total activities`}
-                  {isCachedData && (
-                    <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                      Cached Data
-                    </span>
-                  )}
+                    : `${allRuns.length} activities`}
                 </p>
               </div>
             </div>
@@ -193,11 +198,11 @@ export default function AllRunsPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <main className="px-4 pt-24 pb-24">
         {/* Summary Stats */}
         {summary && stravaConnected && (
           <div className="mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-800 rounded-lg p-4 text-center border border-gray-700 shadow-sm">
                 <div className="text-2xl font-bold text-blue-400">
                   {summary.totalRuns}
@@ -299,9 +304,20 @@ export default function AllRunsPage() {
                             {run.name}
                           </h3>
                           {run.ai_analysis && (
-                            <span className="text-[10px] font-medium bg-green-900/30 text-green-400 px-2 py-0.5 rounded border border-green-800/30 flex-shrink-0">
-                              AI Analyzed
-                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedActivities(prev => ({
+                                  ...prev,
+                                  [run.id]: !prev[run.id]
+                                }));
+                              }}
+                              className="text-[10px] font-medium bg-green-900/30 text-green-400 px-2 py-0.5 rounded border border-green-800/30 flex items-center space-x-1 hover:bg-green-800/40 transition-colors flex-shrink-0"
+                            >
+                              <Sparkles className="w-3 h-3" />
+                              <span>AI Analysis</span>
+                              {expandedActivities[run.id] ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                            </button>
                           )}
                         </div>
                         <div className="flex items-center space-x-3">
@@ -359,9 +375,14 @@ export default function AllRunsPage() {
                         </div>
                       </div>
 
-                      {run.ai_analysis && (
-                        <div className="mt-3 p-3 bg-gray-900/50 rounded-lg border border-gray-700 text-xs text-gray-300 italic">
-                          ✨ {run.ai_analysis}
+                      {run.ai_analysis && expandedActivities[run.id] && (
+                        <div className="mt-4 p-4 bg-gray-900 border-l-2 border-green-500 rounded-r-lg shadow-inner text-sm text-gray-200 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <div className="flex items-start space-x-2">
+                            <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                            <p className="leading-relaxed italic">
+                              {run.ai_analysis}
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -448,6 +469,39 @@ export default function AllRunsPage() {
           </div>
         ) : null}
       </main>
+      {/* Mobile Bottom Navigation */}
+      <footer className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[540px] bg-gray-800 border-t border-gray-700 px-6 py-3 z-50">
+        <nav className="flex items-center justify-between">
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex flex-col items-center space-y-1 text-gray-400 hover:text-gray-200"
+          >
+            <Activity className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Dashboard</span>
+          </button>
+          <button
+            onClick={() => router.push("/progress")}
+            className="flex flex-col items-center space-y-1 text-gray-400 hover:text-gray-200"
+          >
+            <BarChart3 className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Progress</span>
+          </button>
+          <button
+            onClick={() => router.push("/chat")}
+            className="flex flex-col items-center space-y-1 text-gray-400 hover:text-gray-200"
+          >
+            <MessageSquare className="w-6 h-6" />
+            <span className="text-[10px] font-medium">AI Coach</span>
+          </button>
+          <button
+            onClick={() => router.push("/settings")}
+            className="flex flex-col items-center space-y-1 text-gray-400 hover:text-gray-200"
+          >
+            <Settings className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Settings</span>
+          </button>
+        </nav>
+      </footer>
     </div>
   );
 }

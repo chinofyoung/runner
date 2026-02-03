@@ -14,6 +14,16 @@ import {
   Plus,
   Archive,
   Search,
+  Footprints,
+  Activity,
+  Zap,
+  Trophy,
+  Moon,
+  Sparkles,
+  Check,
+  AlertTriangle,
+  ClipboardList,
+  TrendingUp,
 } from "lucide-react";
 
 interface Message {
@@ -261,17 +271,17 @@ export default function AIChat() {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case "easy":
-        return "🚶‍♂️";
+        return <Footprints className="w-5 h-5" />;
       case "tempo":
-        return "🏃‍♂️";
+        return <Activity className="w-5 h-5" />;
       case "interval":
-        return "⚡";
+        return <Zap className="w-5 h-5" />;
       case "long":
-        return "🏃‍♀️";
+        return <TrendingUp className="w-5 h-5" />;
       case "rest":
-        return "😴";
+        return <Moon className="w-5 h-5" />;
       default:
-        return "🏃";
+        return <Activity className="w-5 h-5" />;
     }
   };
 
@@ -471,8 +481,8 @@ export default function AIChat() {
                   <div
                     key={conversation.id}
                     className={`p-3 rounded-lg cursor-pointer transition-colors ${conversation.id === currentConversationId
-                        ? "bg-gray-700 border border-green-500/30"
-                        : "hover:bg-gray-700/50"
+                      ? "bg-gray-700 border border-green-500/30"
+                      : "hover:bg-gray-700/50"
                       }`}
                     onClick={() => loadConversation(conversation.id)}
                   >
@@ -549,8 +559,8 @@ export default function AIChat() {
             >
               <div
                 className={`max-w-3xl ${message.sender === "user"
-                    ? "bg-green-600 text-white shadow-lg shadow-green-900/20"
-                    : "bg-gray-800 text-gray-200 border border-gray-700 shadow-sm"
+                  ? "bg-green-600 text-white shadow-lg shadow-green-900/20"
+                  : "bg-gray-800 text-gray-200 border border-gray-700 shadow-sm"
                   } rounded-2xl p-4`}
               >
                 <div className="flex items-start space-x-3">
@@ -574,8 +584,8 @@ export default function AIChat() {
                     {message.trainingPlan && (
                       <div className="mt-4 bg-gray-900/50 rounded-xl p-4 border border-gray-700">
                         <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-700">
-                          <h4 className="font-semibold text-white">
-                            📋 {message.trainingPlan.title}
+                          <h4 className="font-semibold text-white flex items-center">
+                            <ClipboardList className="w-4 h-4 mr-2" /> {message.trainingPlan.title}
                           </h4>
                           {!savedPlans.includes(message.id) && (
                             <button
@@ -612,7 +622,7 @@ export default function AIChat() {
                                 key={index}
                                 className="flex items-center space-x-3 p-3 bg-gray-800 rounded-lg border border-gray-700"
                               >
-                                <div className="text-lg">
+                                <div className="text-lg text-gray-400">
                                   {getTypeIcon(session.type)}
                                 </div>
                                 <div className="flex-1">

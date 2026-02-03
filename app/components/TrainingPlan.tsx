@@ -9,6 +9,13 @@ import {
   Play,
   MoreVertical,
   X,
+  Footprints,
+  Activity,
+  Zap,
+  Moon,
+  Check,
+  ClipboardList,
+  AlertTriangle,
 } from "lucide-react";
 
 interface TrainingSession {
@@ -70,17 +77,17 @@ const getTypeColor = (type: string) => {
 const getTypeIcon = (type: string) => {
   switch (type) {
     case "easy":
-      return "🚶‍♂️";
+      return <Footprints className="w-5 h-5" />;
     case "tempo":
-      return "🏃‍♂️";
+      return <Activity className="w-5 h-5" />;
     case "interval":
-      return "⚡";
+      return <Zap className="w-5 h-5" />;
     case "long":
-      return "🏃‍♀️";
+      return <TrendingUp className="w-5 h-5" />;
     case "rest":
-      return "😴";
+      return <Moon className="w-5 h-5" />;
     default:
-      return "🏃";
+      return <Activity className="w-5 h-5" />;
   }
 };
 
@@ -153,7 +160,9 @@ export default function TrainingPlan({
     return (
       <div className="bg-gray-800 rounded-2xl shadow-sm p-4 sm:p-6 border border-gray-700">
         <div className="text-center py-8">
-          <div className="text-gray-400 mb-2 text-2xl">⚠️</div>
+          <div className="text-red-500 mb-2 font-bold flex items-center justify-center">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
           <h3 className="text-lg font-medium text-gray-300 mb-2">
             Unable to Load Training Plan
           </h3>
@@ -193,8 +202,8 @@ export default function TrainingPlan({
         <div className="mb-3 p-3 bg-green-900/50 border border-green-700/50 rounded-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-sm font-medium text-green-300">
-                📋 {selectedPlan.title}
+              <h4 className="text-sm font-medium text-green-300 flex items-center">
+                <ClipboardList className="w-4 h-4 mr-2" /> {selectedPlan.title}
               </h4>
             </div>
             <button
@@ -247,17 +256,16 @@ export default function TrainingPlan({
         {trainingPlan.map((session) => (
           <div
             key={session.id}
-            className={`p-3 rounded-2xl border transition-all ${
-              session.completed
-                ? "border-green-500/50 bg-green-900/20"
-                : session.type === "rest"
+            className={`p-3 rounded-2xl border transition-all ${session.completed
+              ? "border-green-500/50 bg-green-900/20"
+              : session.type === "rest"
                 ? "border-gray-600/50 bg-gray-800/30"
                 : "border-gray-700/50 bg-gray-800/50 hover:border-green-500/30"
-            }`}
+              }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3 flex-1 min-w-0">
-                <div className="text-lg flex-shrink-0">
+                <div className="flex-shrink-0 text-gray-400">
                   {getTypeIcon(session.type)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -309,15 +317,15 @@ export default function TrainingPlan({
               <div className="flex items-center space-x-2 flex-shrink-0">
                 {session.completed ? (
                   <div className="w-7 h-7 bg-green-500 rounded-2xl flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
+                    <Check className="w-4 h-4 text-white" />
                   </div>
                 ) : session.type !== "rest" ? (
-                  <button className="w-7 h-7 bg-green-500 rounded-2xl flex items-center justify-center hover:bg-green-600 transition-all">
+                  <button className="w-7 h-7 bg-green-500 rounded-2xl flex items-center justify-center hover:bg-green-600 transition-all shadow-lg shadow-green-900/20">
                     <Play className="w-3 h-3 text-white ml-0.5" />
                   </button>
                 ) : (
-                  <div className="w-7 h-7 bg-gray-600 rounded-2xl flex items-center justify-center">
-                    <span className="text-gray-300 text-xs">💤</span>
+                  <div className="w-7 h-7 bg-gray-700 rounded-2xl flex items-center justify-center border border-gray-600">
+                    <Moon className="w-3.5 h-3.5 text-gray-500" />
                   </div>
                 )}
                 <button className="p-1 text-gray-400 hover:text-gray-300 transition-colors">
@@ -341,13 +349,11 @@ export default function TrainingPlan({
             </h4>
             <p className="text-xs text-blue-200">
               {summary.completedSessions > 0
-                ? `${summary.completedSessions}/${
-                    summary.totalSessions
-                  } sessions completed. ${
-                    summary.progressPercentage >= 70
-                      ? "You're on track!"
-                      : "Keep pushing!"
-                  }`
+                ? `${summary.completedSessions}/${summary.totalSessions
+                } sessions completed. ${summary.progressPercentage >= 70
+                  ? "You're on track!"
+                  : "Keep pushing!"
+                }`
                 : "Start with today's session to build momentum."}
             </p>
           </div>
